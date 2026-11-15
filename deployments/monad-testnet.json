@@ -1835,6 +1835,237 @@
           "inputs": []
         }
       ]
+    },
+    "Charities": {
+      "address": "0xD74718C8470FA90516042A9FF45Be7A9F133D6c0",
+      "deployBlock": 80049286,
+      "abi": [
+        {
+          "type": "constructor",
+          "inputs": [],
+          "stateMutability": "nonpayable"
+        },
+        {
+          "type": "function",
+          "name": "add",
+          "inputs": [
+            {
+              "name": "charity",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "metaHash",
+              "type": "bytes32",
+              "internalType": "bytes32"
+            }
+          ],
+          "outputs": [],
+          "stateMutability": "nonpayable"
+        },
+        {
+          "type": "function",
+          "name": "addMany",
+          "inputs": [
+            {
+              "name": "charities",
+              "type": "address[]",
+              "internalType": "address[]"
+            },
+            {
+              "name": "metaHashes",
+              "type": "bytes32[]",
+              "internalType": "bytes32[]"
+            }
+          ],
+          "outputs": [],
+          "stateMutability": "nonpayable"
+        },
+        {
+          "type": "function",
+          "name": "count",
+          "inputs": [],
+          "outputs": [
+            {
+              "name": "",
+              "type": "uint256",
+              "internalType": "uint256"
+            }
+          ],
+          "stateMutability": "view"
+        },
+        {
+          "type": "function",
+          "name": "isVerified",
+          "inputs": [
+            {
+              "name": "",
+              "type": "address",
+              "internalType": "address"
+            }
+          ],
+          "outputs": [
+            {
+              "name": "",
+              "type": "bool",
+              "internalType": "bool"
+            }
+          ],
+          "stateMutability": "view"
+        },
+        {
+          "type": "function",
+          "name": "list",
+          "inputs": [
+            {
+              "name": "",
+              "type": "uint256",
+              "internalType": "uint256"
+            }
+          ],
+          "outputs": [
+            {
+              "name": "",
+              "type": "address",
+              "internalType": "address"
+            }
+          ],
+          "stateMutability": "view"
+        },
+        {
+          "type": "function",
+          "name": "metaHashOf",
+          "inputs": [
+            {
+              "name": "",
+              "type": "address",
+              "internalType": "address"
+            }
+          ],
+          "outputs": [
+            {
+              "name": "",
+              "type": "bytes32",
+              "internalType": "bytes32"
+            }
+          ],
+          "stateMutability": "view"
+        },
+        {
+          "type": "function",
+          "name": "owner",
+          "inputs": [],
+          "outputs": [
+            {
+              "name": "",
+              "type": "address",
+              "internalType": "address"
+            }
+          ],
+          "stateMutability": "view"
+        },
+        {
+          "type": "function",
+          "name": "revoke",
+          "inputs": [
+            {
+              "name": "charity",
+              "type": "address",
+              "internalType": "address"
+            }
+          ],
+          "outputs": [],
+          "stateMutability": "nonpayable"
+        },
+        {
+          "type": "function",
+          "name": "setOwner",
+          "inputs": [
+            {
+              "name": "next",
+              "type": "address",
+              "internalType": "address"
+            }
+          ],
+          "outputs": [],
+          "stateMutability": "nonpayable"
+        },
+        {
+          "type": "event",
+          "name": "CharityAdded",
+          "inputs": [
+            {
+              "name": "charity",
+              "type": "address",
+              "indexed": true,
+              "internalType": "address"
+            },
+            {
+              "name": "metaHash",
+              "type": "bytes32",
+              "indexed": false,
+              "internalType": "bytes32"
+            }
+          ],
+          "anonymous": false
+        },
+        {
+          "type": "event",
+          "name": "CharityRevoked",
+          "inputs": [
+            {
+              "name": "charity",
+              "type": "address",
+              "indexed": true,
+              "internalType": "address"
+            }
+          ],
+          "anonymous": false
+        },
+        {
+          "type": "event",
+          "name": "OwnerChanged",
+          "inputs": [
+            {
+              "name": "owner",
+              "type": "address",
+              "indexed": true,
+              "internalType": "address"
+            }
+          ],
+          "anonymous": false
+        },
+        {
+          "type": "error",
+          "name": "AlreadyListed",
+          "inputs": []
+        },
+        {
+          "type": "error",
+          "name": "LengthMismatch",
+          "inputs": []
+        },
+        {
+          "type": "error",
+          "name": "NotListed",
+          "inputs": []
+        },
+        {
+          "type": "error",
+          "name": "NotOwner",
+          "inputs": []
+        },
+        {
+          "type": "error",
+          "name": "ZeroAddress",
+          "inputs": []
+        },
+        {
+          "type": "error",
+          "name": "ZeroHash",
+          "inputs": []
+        }
+      ]
     }
   },
   "demoAccounts": {
