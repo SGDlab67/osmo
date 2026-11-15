@@ -1,5 +1,5 @@
 import { createPublicClient, createWalletClient, defineChain, formatEther, http, type Account, type Hash } from "viem";
-import { config } from "./config";
+import { config, monadscan } from "./config";
 
 export const chain = defineChain({
   id: config.chainId,
@@ -16,6 +16,7 @@ export function walletFor(account: Account) {
 }
 
 export const txUrl = (hash: string) => `${config.explorer}/tx/${hash}`;
+export const scanTxUrl = (hash: string) => `${monadscan}/tx/${hash}`;
 export const addressUrl = (a: string) => `${config.explorer}/address/${a}`;
 
 export interface Sent {

@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { Camera, Check, ChevronLeft, ChevronRight, Search } from "lucide-react";
 import { registryAbi } from "@/lib/abi";
-import { txUrl, publicClient } from "@/lib/chain";
+import { scanTxUrl, publicClient } from "@/lib/chain";
 import { config } from "@/lib/config";
 import { COUNTRIES, countryName, flagOf } from "@/lib/countries";
 import { defaultPicture } from "@/lib/people";
@@ -104,7 +104,7 @@ export default function WelcomePage() {
           <p className="mt-5 text-[28px] font-semibold tracking-tight">
             {doneAll ? `You're in, @${handle}` : "Setting you up"} {flagOf(country)}
           </p>
-          <p className="mt-1 text-[15px] text-muted">{doneAll ? "$25 USDC, $15 NVIDIA, $10 Tesla and $10 Bitcoin to try it with." : "Three steps on Monad"}</p>
+          <p className="mt-1 text-[15px] text-muted">{doneAll ? "$150 to send around: $50 USDC, $40 NVIDIA, $25 Tesla, $20 Bitcoin and $15 gold." : "Three steps on Monad"}</p>
           <ol className="mt-8 w-full space-y-2 text-left">
             {steps.map((s) => (
               <li key={s.label} className="flex items-center gap-3 rounded-2xl bg-white px-4 py-3.5">
@@ -114,7 +114,7 @@ export default function WelcomePage() {
                 <span className="flex-1 text-[15px]">{s.label}</span>
                 {s.ms !== undefined &&
                   (s.hash ? (
-                    <a href={txUrl(s.hash)} target="_blank" rel="noreferrer" className="tabular text-[14px] font-semibold text-brand">
+                    <a href={scanTxUrl(s.hash)} target="_blank" rel="noreferrer" className="tabular text-[14px] font-semibold text-brand">
                       {s.ms} ms
                     </a>
                   ) : (

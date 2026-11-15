@@ -3,10 +3,10 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useMemo, useState } from "react";
-import { Check, ChevronLeft, ChevronRight, Delete, Globe, Lock, Plus, QrCode, Search, X } from "lucide-react";
+import { ArrowUpRight, Check, ChevronLeft, ChevronRight, Delete, Globe, Lock, Plus, QrCode, Search, X } from "lucide-react";
 import { registryAbi } from "@/lib/abi";
 import { META, unitsLabel, usd } from "@/lib/assets";
-import { publicClient } from "@/lib/chain";
+import { publicClient, scanTxUrl } from "@/lib/chain";
 import { config } from "@/lib/config";
 import { useRequireAccount } from "@/lib/hooks";
 import { useStore } from "@/lib/store";
@@ -188,9 +188,14 @@ function PayPageFlow({ params }: { params: Record<string, string> }) {
               Done
             </PrimaryButton>
             {done.kind === "paid" && (
-              <Link href={`/p/${done.hash}`} className="mt-3 flex h-11 items-center justify-center text-[15px] font-semibold text-brand">
-                See the payment
-              </Link>
+              <div className="mt-3 flex items-center justify-center gap-6">
+                <Link href={`/p/${done.hash}`} className="flex h-11 items-center text-[15px] font-semibold text-brand">
+                  See the payment
+                </Link>
+                <a href={scanTxUrl(done.hash)} target="_blank" rel="noreferrer" className="flex h-11 items-center gap-1 text-[15px] font-semibold text-brand">
+                  MonadScan <ArrowUpRight size={16} />
+                </a>
+              </div>
             )}
           </div>
         </div>

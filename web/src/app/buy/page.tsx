@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
 import { Building2, Check, CreditCard, Wallet, X } from "lucide-react";
 import { MARKETS, META, unitsLabel, usd } from "@/lib/assets";
-import { txUrl } from "@/lib/chain";
+import { scanTxUrl } from "@/lib/chain";
 import { useRequireAccount } from "@/lib/hooks";
 import { useStore } from "@/lib/store";
 import { AssetDot, PrimaryButton } from "@/components/ui";
@@ -57,7 +57,7 @@ function BuyPageFlow({ params }: { params: Record<string, string> }) {
             You bought {usd(dollars)} of {META[asset].name}
           </p>
           <p className="mt-1 text-[16px] text-muted">{unitsLabel(done.units, asset)} is in your wallet, on Monad.</p>
-          <a href={txUrl(done.hash)} target="_blank" rel="noreferrer" className="mt-4 text-[14px] font-semibold text-brand">
+          <a href={scanTxUrl(done.hash)} target="_blank" rel="noreferrer" className="mt-4 text-[14px] font-semibold text-brand">
             Confirmed in {done.ms} ms
           </a>
         </div>

@@ -3,15 +3,15 @@
 import Link from "next/link";
 import { use, useEffect, useState } from "react";
 import { decodeEventLog, formatEther, formatUnits } from "viem";
-import { Check, Copy } from "lucide-react";
+import { ArrowUpRight, Check, Copy } from "lucide-react";
 import { registryAbi, osmoAbi } from "@/lib/abi";
 import { META, unitsLabel, usd } from "@/lib/assets";
-import { publicClient, txUrl } from "@/lib/chain";
+import { publicClient, scanTxUrl } from "@/lib/chain";
 import { config } from "@/lib/config";
 import { PRIVATE_MARK } from "@/lib/feed";
 import { useStore } from "@/lib/store";
 import { BackHeader, Screen } from "@/components/shell";
-import { AssetDot, Avatar, Card, Flag } from "@/components/ui";
+import { AssetDot, Avatar, Card, Flag, SectionTitle } from "@/components/ui";
 
 interface R {
   from: string;
@@ -92,28 +92,40 @@ export function Receipt({ params }: { params: Promise<{ hash: string }> }) {
           {r.note && <p className="mt-1 text-[17px]">{r.note}</p>}
           {r.isPrivate && <p className="mt-1 text-[13px] text-muted">Private in the app. The chain itself is public.</p>}
         </div>
-        <Card className="mt-6 divide-y divide-line !py-1">
+        <SectionTitle>Transaction details</SectionTitle>
+        <Card className="divide-y divide-line !py-1">
           {rows.map(([k, v]) => (
             <p key={k} className="flex justify-between gap-4 py-3 text-[15px]">
               <span className="text-muted">{k}</span>
               <span className="text-right font-semibold">{v}</span>
             </p>
           ))}
+          <p className="flex justify-between gap-4 py-3 text-[15px]">
+            <span className="text-muted">Transaction</span>
+            <span className="font-mono text-[14px] font-semibold">
+              {hash.slice(0, 8)}…{hash.slice(-6)}
+            </span>
+          </p>
+          <a href={scanTxUrl(hash)} target="_blank" rel="noreferrer" className="-mx-5 flex items-center gap-3 rounded-b-[28px] px-5 py-3.5 active:bg-chip">
+            <AssetDot symbol="MON" size={34} />
+            <span className="flex-1">
+              <span className="block text-[16px] font-semibold text-brand">View on MonadScan</span>
+              <span className="block text-[13px] text-muted">See this payment on the Monad blockchain</span>
+            </span>
+            <ArrowUpRight size={20} className="text-brand" />
+          </a>
         </Card>
-        <div className="mt-4 grid grid-cols-2 gap-2.5">
+        <div className="mt-4">
           <button
             type="button"
             onClick={() => {
               navigator.clipboard?.writeText(location.href);
               setCopied(true);
             }}
-            className="flex h-12 items-center justify-center gap-2 rounded-full bg-white text-[15px] font-semibold"
+            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-white text-[15px] font-semibold"
           >
             {copied ? <Check size={16} /> : <Copy size={16} />} {copied ? "Copied" : "Copy link"}
           </button>
-          <a href={txUrl(hash)} target="_blank" rel="noreferrer" className="flex h-12 items-center justify-center rounded-full bg-white text-[15px] font-semibold text-brand">
-            Explorer
-          </a>
         </div>
       </div>
     </Screen>

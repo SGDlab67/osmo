@@ -55,17 +55,20 @@ contract Deploy is Script {
             welcome.listAsset(list[i].name, list[i].symbol, list[i].decimals);
         }
 
-        // Starter kit at the app's prices: $25 USDC, $15 NVIDIA, $10 Tesla, $10 Bitcoin.
-        DemoAsset[] memory kit = new DemoAsset[](4);
-        uint96[] memory amt = new uint96[](4);
+        // Starter kit, about $150 at Nov 15 prices, so every demo wallet has plenty to send around:
+        // $50 USDC, $40 NVIDIA, $25 Tesla, $20 Bitcoin, $15 gold.
+        DemoAsset[] memory kit = new DemoAsset[](5);
+        uint96[] memory amt = new uint96[](5);
         kit[0] = welcome.assetBySymbol("USDC");
-        amt[0] = 25e6;
+        amt[0] = 50e6;
         kit[1] = welcome.assetBySymbol("NVDA");
-        amt[1] = 0.0942e18;
+        amt[1] = 0.2437e18;
         kit[2] = welcome.assetBySymbol("TSLA");
-        amt[2] = 0.0261e18;
+        amt[2] = 0.0643e18;
         kit[3] = welcome.assetBySymbol("BTC");
-        amt[3] = 0.000147e18;
+        amt[3] = 0.000309e18;
+        kit[4] = welcome.assetBySymbol("PAXG");
+        amt[4] = 0.003905e18;
         welcome.setKit(kit, amt);
 
         // The demo client's share is test NVIDIA, the same token the app uses.
