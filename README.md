@@ -81,9 +81,13 @@ pre-funded.
 
 | Contract | What it does |
 | --- | --- |
-| `MockShare` | Stand-in for a tokenized stock on testnet |
 | `UsernameRegistry` | One name per address, case-insensitive, reverts on an unclaimed name |
 | `Osmo` | Send any token or MON by name, with a note, as yourself, as someone's agent, by standing order, or as a claim link |
+| `Welcome` | The phone app's layer: starter kit and gas for a new wallet in one relayed transaction, profiles, the member list, money requests, and the simulated Buy |
+| `DemoAsset` | Stand-in for a tokenized stock, coin or stablecoin on testnet, one clone per asset (23 of them), mintable only by `Welcome` |
+
+`MockShare` now lives in `test/mocks/` and is used only by the tests; on
+testnet the demo share is test NVIDIA, the same token the app uses.
 
 `Osmo` has no owner and sends the token you already hold: no
 wrapper, no allowlist. The only value it ever holds is unclaimed links,
@@ -142,6 +146,11 @@ on 2026-11-15 from block 80017489, and `Osmo` in block 80023566.
 
 Addresses and ABIs are also in `deployments/monad-testnet.json`.
 
+This is the deployment from before the app's layer was merged in. The next
+run of `script/Deploy.s.sol` deploys everything together (registry, `Osmo`,
+`Welcome` and the 23 demo assets), rewrites `deployments/monad-testnet.json`,
+and `npm run contracts` points the app and the demo client at it.
+
 ## Rehearsed on Monad testnet
 
 Run on 2026-11-15 from the deployer account, which claimed the name
@@ -181,13 +190,35 @@ Deploy:
 # one time: import the deployer into Foundry's encrypted keystore
 cast wallet import monad-deployer --interactive
 
-forge script script/Deploy.s.sol:Deploy \
+RELAYER=<app server wallet> script/with-deployer.sh forge script script/Deploy.s.sol:Deploy \
   --rpc-url monad_testnet \
   --account monad-deployer \
   --broadcast
+
+# point the app and the demo client at what was just deployed, then commit
+cd web && npm run contracts
 ```
 
+One script deploys the whole set and writes every address to
+`deployments/monad-testnet.json` (on anvil: `deployments/local.json`,
+gitignored). `npm run contracts` turns that file and forge's build output
+into `web/src/lib/contracts.ts` (ABIs and addresses) and
+`demo/deployment.js`, so nothing is copied by hand. CI runs the contract
+checks and tests, then fails if `contracts.ts` is out of date, then lints and
+builds the app.
+
 Never pass a private key on the command line.
+
+### Repo layout
+
+| Path | What's there |
+| --- | --- |
+| `src/` | The contracts: `Osmo`, `UsernameRegistry`, `Welcome`, `DemoAsset` |
+| `test/` | Forge tests (`test/mocks/MockShare.sol` for the agent tests) |
+| `script/Deploy.s.sol` | Deploys everything and writes `deployments/<network>.json` |
+| `deployments/` | Live addresses and ABIs, the single source the clients read |
+| `web/` | The phone app (Next.js); `web/src/lib/contracts.ts` is generated |
+| `demo/` | The one-file demo client |
 
 ## The demo client
 
@@ -221,6 +252,79 @@ window.DEMO_KEYS = { alice: "0x...", bob: "0x..." };
 The honest limit: this moves a tokenized claim, not the registered share.
 Whether the holder is a shareholder of record is the issuer's and the
 transfer agent's call.
+
+## The phone app (`web/`)
+
+Written at the Blitz on 2026-11-15, from an empty `create-next-app`: a phone-first web app (Next.js 16, React 19,
+Tailwind 4, viem) that talks straight to the contracts above. The product and its look come from our UBC Hackathon
+project, with the organizer's OK. The code was written again here today. The only files carried over are images:
+the asset logos (the companies' own marks), the profile pictures (Google's Noto emoji, Apache 2.0, and pixel-art
+faces drawn by our own generator script) and our logo.
+
+**Screens**
+
+| Screen | What it does on Monad |
+| --- | --- |
+| Welcome | Navy splash, then "Make it yours": a pixel NFT or cartoon character, a name, @username (checked on-chain as you type), an optional country flag and an "I understand" box. "Create my account" makes a wallet on the phone, the server calls `Welcome.welcome(address, profile)` (starter kit, MON for gas, profile, one transaction), and the phone claims the name in `UsernameRegistry`. Each step shows its time in milliseconds |
+| Tab bar | Home, Friends, the logo button for Pay/Request, Portfolio, and Me (your picture, with a red dot when a request waits) |
+| Home | Search and your code, a time-of-day greeting, your people, Portfolio and Stablecoins cards (with Add money), "Requests waiting", the Monad Blitz Oregon builders with Add buttons, and a Friends / Everyone feed read from Taihl's `sentBlocks` index. Feed cards: who paid whom and for what, the asset sent, Pay again or Say thanks, emoji reactions, double-tap to like |
+| Friends | Search, suggested people, your friends (anyone you've paid or been paid by, plus people you added) and the Blitz builders |
+| Pay | Pick a person (Recent, Friends, More people, Blitz builders not yet joined), type an amount and a note on the keypad with emoji shortcuts, then **Request** or **Pay**. Pay opens the pay-with list (stablecoins first, then your portfolio, grayed out when it isn't enough) and "Buy something to send". One Confirm screen with Public or Private. `Osmo.sendToken` (or `sendNative` for MON) moves exactly that asset with `eth_sendRawTransactionSync`; the success screen says "Settled on Monad in N ms" with the fee |
+| Requests | `Welcome.request` puts a money request on-chain; the payer sees it on Home and Me and pays or declines; paying closes it |
+| Buy | Pick an asset by market, an amount and a method (Apple Pay, card, Venmo, PayPal, Cash App, bank, wallet). Demo only: no real money moves, the server mints the test asset through `Welcome.grant`, capped at $100 |
+| Portfolio | Total with today's move, a chart of what you hold at real prices over 1D / 1W / 1M (drag to scrub), Add money / Buy / Send, "What you hold" mix, holdings by group, markets you don't hold, and a hide-amounts eye |
+| Markets | All 24 assets with live prices, "Moving today", 7-day lines, filters, search and sorting; each has an asset page with a chart |
+| Payment page | `/p/<tx hash>`: who paid whom, what, when, the fee and the block, read from the transaction itself |
+| Profiles | Picture, name, flag, Pay or request, Add friend, their portfolio (total and each holding as a share), "Between you" and their payments |
+| Me | Notifications, settings, your code, Live on Monad (the room screen), your profile, requests and your activity |
+
+Friends, reactions and the hide-amounts switch are kept on the phone. Payments, profiles, the member list and requests are on Monad.
+
+**People in the demo**
+
+- Eight sample people (Ana, Wes, Sabina, Maya, Jordan, Dev, Priya, Zoe) are real accounts on Monad, made by
+  `web/scripts/seed-demo.mjs` with their own wallets, usernames and a few payments between them. Their keys are
+  derived from a public string on purpose; they only hold test tokens.
+- The builders at Monad Blitz Oregon are listed by name, with their permission. Their usernames are **not**
+  claimed for them: each one turns into a real account the moment that person signs up on their own phone.
+
+**Contracts added for the app**
+
+| Contract | What it does |
+| --- | --- |
+| `DemoAsset` | One test token per asset: USDC, USDT, PYUSD, DAI, EURC, NVDA, TSLA, AAPL, GOOGL, AMZN, META, MSFT, NFLX, COIN, CRCL, PAXG, XAUT, KAG, USDY, BUIDL, BTC, ETH, SOL. Deployed once and cloned (EIP-1167) for each asset so listing 23 is cheap. Mintable only by `Welcome`; `Osmo` can move it without an approval, so paying is one transaction |
+| `Welcome` | Lists the demo assets; once per wallet gives a starter kit ($25 USDC, $15 NVIDIA, $10 Tesla, $10 Bitcoin at today's prices) and MON for gas; keeps the member list, each member's profile and money requests on-chain so the app can list them without scanning logs; `grant` lets the server fill simulated Buys |
+
+They deploy with everything else from `script/Deploy.s.sol` (see Run it).
+Addresses: **to be filled in after the Monad deploy.**
+
+"Private" puts a marker in front of the note so the app shows the payment only to the two people. The chain is public
+either way, and the app says so.
+
+**Why Monad**
+
+- Sub-second blocks plus `eth_sendRawTransactionSync`: the phone gets the receipt in the same request, so a payment
+  feels like a tap. The receipt screen shows the real number.
+- Fees are low enough that the app pays each newcomer's gas and starter kit, so nobody in the room sees a wallet,
+  a faucet or a seed phrase.
+- Every person signs their own payments from their own wallet, so a room of phones paying at once is many
+  independent senders, the load Monad's parallel execution is built for.
+
+**Run it**
+
+```bash
+cd web
+cp .env.example .env.local   # set RELAYER_KEY (server only, never committed); addresses come from deployments/
+npm install
+npm run seed                 # once per deploy: the eight sample people and their payments
+npm run dev
+
+# against a local anvil chain instead (after deploying there with script/Deploy.s.sol):
+NETWORK=local npm run contracts && NETWORK=local npm run seed && npm run dev
+```
+
+Prices come from CoinGecko through `/api/prices`, cached for a minute; dollar coins are pinned to $1. The phone
+wallet is kept in the browser's local storage: fine for a testnet demo, never for real money.
 
 ## Licence
 

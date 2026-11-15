@@ -12,7 +12,7 @@ env:
 
 jobs:
   check:
-    name: Foundry project
+    name: Contracts and app
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -33,6 +33,29 @@ jobs:
 
       - name: Run Forge tests
         run: forge test -vvv
+
+      - name: Install Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install the app
+        working-directory: web
+        run: npm ci
+
+      - name: Check the app's ABIs and addresses match the contracts
+        working-directory: web
+        run: npm run contracts -- --check
+
+      - name: Lint the app
+        working-directory: web
+        run: npm run lint
+
+      - name: Build the app
+        working-directory: web
+        run: npm run build
 
   services:
     name: Services

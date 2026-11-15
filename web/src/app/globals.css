@@ -1,0 +1,210 @@
+@import "tailwindcss";
+
+:root {
+  --page: #f3eee5;
+  --ink: #14202e;
+  --muted: #7a7265;
+  --brand: #1f4f82;
+  --brand-soft: #e3ecf6;
+  --splash: #0f2c4d;
+  --money: #2b8a57;
+  --down: #c8433a;
+  --chip: #efe9df;
+  --line: #e8e1d5;
+}
+
+@theme inline {
+  --color-page: var(--page);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-brand: var(--brand);
+  --color-brand-soft: var(--brand-soft);
+  --color-splash: var(--splash);
+  --color-money: var(--money);
+  --color-down: var(--down);
+  --color-chip: var(--chip);
+  --color-line: var(--line);
+  --font-sans: var(--font-inter);
+  --font-mono: var(--font-roboto-mono);
+}
+
+html,
+body {
+  background: #e6dccd;
+  color: var(--ink);
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior-y: none;
+}
+
+/* On a phone the app fills the screen. On a computer it sits in a phone-sized frame. */
+.frame {
+  min-height: 100dvh;
+  background: var(--page);
+  position: relative;
+  margin: 0 auto;
+  max-width: 430px;
+}
+@media (min-width: 820px) {
+  .stage {
+    display: flex;
+    gap: 56px;
+    align-items: center;
+    justify-content: center;
+    min-height: 100dvh;
+    padding: 34px;
+  }
+  .frame {
+    width: 390px;
+    height: min(844px, calc(100dvh - 68px));
+    min-height: 0;
+    border-radius: 48px;
+    overflow: hidden;
+    box-shadow:
+      0 0 0 11px #14202e,
+      0 30px 80px rgba(20, 32, 46, 0.35);
+    transform: translateZ(0);
+    margin: 0;
+  }
+  .frame-scroll {
+    height: 100%;
+    overflow-y: auto;
+    scrollbar-width: none;
+  }
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+.no-scrollbar {
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+button {
+  cursor: pointer;
+}
+
+/* Everything you can press gives a little under your finger. */
+a,
+button {
+  transition:
+    transform 0.12s ease,
+    background-color 0.15s ease,
+    opacity 0.15s ease;
+}
+a:active:not(.no-press),
+button:active:not(:disabled):not(.no-press) {
+  transform: scale(0.97);
+}
+
+/* Visible focus for keyboards, none for fingers. */
+:focus-visible {
+  outline: 2.5px solid var(--brand);
+  outline-offset: 2px;
+  border-radius: 12px;
+}
+input:not([type="checkbox"]):focus-visible,
+textarea:focus-visible {
+  outline: none;
+}
+label:is(.rounded-full, .rounded-2xl):has(input:focus) {
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--brand) 30%, transparent);
+}
+
+/* Small text links get a finger-sized tap area without changing the layout. */
+.hit {
+  position: relative;
+}
+.hit::after {
+  content: "";
+  position: absolute;
+  inset: -12px -10px;
+}
+
+@keyframes slide-up {
+  from {
+    transform: translateY(24px);
+    opacity: 0;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+.slide-up {
+  animation: slide-up 0.22s ease-out;
+}
+@keyframes heart-burst {
+  0% {
+    transform: translate(-50%, -50%) scale(0.2);
+    opacity: 0;
+  }
+  25% {
+    transform: translate(-50%, -50%) scale(1.15);
+    opacity: 1;
+  }
+  60% {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(-50%, -70%) scale(0.9);
+    opacity: 0;
+  }
+}
+.heart-burst {
+  animation: heart-burst 0.8s ease-out forwards;
+}
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.fade-up {
+  animation: fade-up 0.3s ease both;
+}
+@keyframes pop {
+  0% {
+    transform: scale(0.6);
+    opacity: 0;
+  }
+  70% {
+    transform: scale(1.08);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+.pop {
+  animation: pop 0.45s ease both;
+}
+@keyframes blink {
+  50% {
+    opacity: 0.35;
+  }
+}
+.blink {
+  animation: blink 1.4s ease-in-out infinite;
+}
+@keyframes shake {
+  20%,
+  60% {
+    transform: translateX(-6px);
+  }
+  40%,
+  80% {
+    transform: translateX(6px);
+  }
+}
+.shake {
+  animation: shake 0.3s ease;
+}

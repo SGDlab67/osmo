@@ -17,3 +17,6 @@ demo/demo-keys.js
 # Services
 services/node_modules/
 services/.state/
+
+# Local anvil deployments
+deployments/local.json
