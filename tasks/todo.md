@@ -7,12 +7,26 @@ run by a person on their own machine.
 
 Branch: `charities`, cut from `main`. One commit per task.
 
+**Status 2026-11-15 (Charlie, built with Hermes).** Phases 1 and 2, T10 and T12 are done and live on Monad testnet
+(`Charities` 0xD74718C8470FA90516042A9FF45Be7A9F133D6c0, 20 listed). T9 (monthly) and T11 (gift links) are not started.
+Changes from this plan, decided by Charlie:
+- **Real organizations instead of fictional ones (overrides rule 4 and T3).** 20 US nonprofits with real names, logos,
+  EINs and addresses from IRS records (ProPublica). Stand With Crypto is featured for the demo; it is a 501(c)(4), so the
+  app and receipts say gifts to it are not deductible. Coin Center is listed as CC Foundation, its 501(c)(3). Every Give
+  screen says Osmo isn't affiliated and that testnet gifts go to stand-in wallets; receipts say "Testnet demo. Not a tax
+  document." The data lives in `web/src/data/charities.json` (hash = keccak256 of `JSON.stringify(record)`), logos in
+  `web/public/charities/`.
+- `Charities.addMany` added so the seed lists every charity in one transaction.
+- Charity wallets are funded directly by the curator to claim their usernames, not welcomed (no starter kit, no gas
+  grant from the float, and they don't show up as people).
+- Receipts also flag Form 8283 at $500 and note that stablecoins are property, and the summary exports a CSV.
+
 ---
 
 ## Phase 1: Foundation
 
 ### T1 [agent] Charities contract and tests
-- [ ] Done
+- [x] Done
 
 Add `src/Charities.sol` and `test/Charities.t.sol`.
 
@@ -37,7 +51,7 @@ Verification: `forge fmt --check && forge test --match-contract Charities -vv`, 
 Files: `src/Charities.sol`, `test/Charities.t.sol`. Scope: S. Depends on: none.
 
 ### T2 [agent] Deploy script and app bindings
-- [ ] Done
+- [x] Done
 
 Add `script/DeployCharities.s.sol` that deploys only `Charities` and records it
 in `deployments/<network>.json` under `contracts.Charities` as
@@ -66,7 +80,7 @@ git diff --stat deployments/        # must be empty
 Files: `script/DeployCharities.s.sol`, `web/scripts/sync-contracts.mjs`, `web/src/lib/abi.ts`, `web/src/lib/config.ts`, `web/src/lib/contracts.ts` (generated). Scope: M. Depends on: T1.
 
 ### T3 [agent] Demo charity data
-- [ ] Done
+- [x] Done (changed: real organizations, see note at the top)
 
 Create three fictional charities as static files in `web/public/charities/`:
 
@@ -90,7 +104,7 @@ Verification: `for f in web/public/charities/*.json; do node -e 'JSON.parse(requ
 Files: `web/public/charities/*`. Scope: S. Depends on: none.
 
 ### T4 [agent locally, owner on testnet] Seed the charities
-- [ ] Done (local anvil)  - [ ] Done (testnet, owner)
+- [x] Done (local anvil)  - [x] Done (testnet, owner)
 
 Add `web/scripts/seed-charities.mjs` and `"seed:charities": "node --env-file-if-exists=.env.local scripts/seed-charities.mjs"` to `web/package.json`. Model it on `web/scripts/seed-demo.mjs` (same viem setup, same `NETWORK` and `NEXT_PUBLIC_*` overrides, same derived-from-a-public-string wallets, same `RELAYER_KEY` operator to `Welcome.welcome` the new wallets).
 
@@ -119,7 +133,7 @@ Files: `web/scripts/seed-charities.mjs`, `web/package.json`. Scope: M. Depends o
 ## Phase 2: Give (core demo)
 
 ### T5 [agent] Read verified charities into the app state
-- [ ] Done
+- [x] Done
 
 Extend the existing shared state, do not add a new polling path (phones must not
 read the chain directly, see `web/src/lib/state-server.ts` and `state.ts`).
@@ -132,7 +146,7 @@ Verification: `(cd web && npx tsc --noEmit && npm run lint && npm run build)`; s
 Files: `web/src/lib/state.ts`, `web/src/lib/state-server.ts`. Scope: M. Depends on: T4 (local).
 
 ### T6 [agent] Give screen
-- [ ] Done
+- [x] Done
 
 Add `web/src/app/give/page.tsx` and a "Give" entry point from the home screen
 (read `web/src/components/shell.tsx` and `web/src/app/page.tsx` for the existing
@@ -150,7 +164,7 @@ Verification: gate for `web/`; manual: run the app on local anvil and complete o
 Files: `web/src/app/give/page.tsx`, small edits in `web/src/components/shell.tsx` or `web/src/app/page.tsx`, possibly `web/src/lib/store.tsx`. Scope: M. Depends on: T5.
 
 ### T7 [agent] Historical fair market value lookup
-- [ ] Done
+- [x] Done
 
 Add `web/src/lib/fmv.ts` and `web/src/app/api/fmv/route.ts`:
 `GET /api/fmv?symbol=NVDA&t=<unix seconds>` returns
@@ -165,7 +179,7 @@ Verification: gate for `web/`; `curl 'localhost:3000/api/fmv?symbol=USDC&t=<rece
 Files: `web/src/lib/fmv.ts`, `web/src/app/api/fmv/route.ts`. Scope: M. Depends on: none.
 
 ### T8 [agent] Donation receipt on the payment page
-- [ ] Done
+- [x] Done
 
 Extend `web/src/app/p/[hash]/receipt.tsx` (read it first). When the payment's
 recipient is a charity from `state.charities` with `verified && detailsOk`, show a
@@ -212,7 +226,7 @@ Verification: gate for `web/` and `services/`; manual local flow with `anvil` an
 Files: `web/src/app/give/page.tsx`, `web/src/lib/state.ts`, `web/src/lib/state-server.ts`, `web/src/lib/store.tsx`. Scope: M. Depends on: T6.
 
 ### T10 [agent] Year-end summary
-- [ ] Done
+- [x] Done
 
 Add `web/src/app/give/summary/page.tsx`: for a chosen calendar year (default
 current), list every donation the user's wallet made to verified charities
@@ -257,7 +271,7 @@ Files: `web/src/app/c/page.tsx`, `web/src/app/api/claim/route.ts`, `web/src/app/
 ## Wrap
 
 ### T12 [agent] README and demo script
-- [ ] Done
+- [x] Done (README section; no separate demo script yet)
 
 Add a "Give" section to `README.md`: what it is, the receipt fields, the trust
 model ("the curator checked; the hash proves the details did not change"), the

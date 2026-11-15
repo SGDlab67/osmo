@@ -10,6 +10,7 @@ import { config } from "./config";
 import { PRIVATE_MARK, type Payment } from "./feed";
 import { DEMO_PEOPLE, EVENT_PEOPLE, EVENT_TAG, defaultPicture, encodeProfile, type Person } from "./people";
 import { fromWire, type MoneyRequest, type WireState } from "./state";
+import type { Charity } from "./charities";
 
 export interface Quote {
   price: number;
@@ -53,6 +54,9 @@ interface Store {
   people: Person[];
   feed: Payment[];
   requests: MoneyRequest[];
+  /** Verified nonprofits from Charities (empty when it isn't deployed). */
+  charities: Charity[];
+  charityOf: (handle: string) => Charity | undefined;
   block: bigint | null;
   totalUsd: number;
   cashUsd: number;
@@ -106,6 +110,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [members, setMembers] = useState<Person[]>([]);
   const [feed, setFeed] = useState<Payment[]>([]);
   const [requests, setRequests] = useState<MoneyRequest[]>([]);
+  const [charities, setCharities] = useState<Charity[]>([]);
   const [block, setBlock] = useState<bigint | null>(null);
   const [status, setStatus] = useState<ChainStatus>(config.welcome === ZERO ? "missing" : "loading");
   const fails = useRef(0);
@@ -173,6 +178,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         }
         setMembers(st.members);
         setRequests(st.requests);
+        if (st.charities) setCharities((c) => (c.length === st.charities.length && c.every((x, i) => x.verified === st.charities[i].verified && x.detailsOk === st.charities[i].detailsOk) ? c : st.charities));
         const items = st.feed.map(fromWire);
         setFeed(items);
         if (st.sends !== lastSends || fresh) {
@@ -213,14 +219,18 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     return [...tagged, ...eventList];
   }, [members]);
 
+  const charityOf = useCallback((h: string) => charities.find((c) => c.handle === h), [charities]);
+
   const personOf = useCallback(
     (h: string): Person => {
+      const org = charities.find((c) => c.handle === h);
+      if (org) return { address: org.wallet, handle: h, name: org.name, picture: `charity:${h}`, country: "US", joined: true };
       const found = people.find((p) => p.handle === h);
       if (found) return found;
       const demo = DEMO_PEOPLE.find((d) => d.handle === h);
       return { address: ZERO, handle: h, name: demo?.name ?? h, picture: demo?.picture ?? defaultPicture(h), country: demo?.country ?? "", joined: false };
     },
-    [people],
+    [people, charities],
   );
 
   const me = useMemo(() => (account && handle ? { ...personOf(handle), address: account.address, joined: true } : null), [account, handle, personOf]);
@@ -372,7 +382,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   const value: Store = {
     ready, status, account, me, tokens, balances, prices, people, feed, requests, block, totalUsd, cashUsd,
-    personOf, canSee, spendable, join, pay, request, closeRequest, buy, saveProfile, signOut, balancesFor,
+    charities, charityOf, personOf, canSee, spendable, join, pay, request, closeRequest, buy, saveProfile, signOut, balancesFor,
     friends, addFriend, removeFriend, reactions: local.reactions, react, hideBalances: local.hide, toggleHideBalances, arrivals, dismissArrival,
   };
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

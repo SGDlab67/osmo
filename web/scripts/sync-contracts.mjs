@@ -23,6 +23,7 @@ const CONTRACTS = [
   ["Osmo", "osmoAbi"],
   ["UsernameRegistry", "usernameRegistryAbi"],
   ["Welcome", "welcomeAbi"],
+  ["Charities", "charitiesAbi"],
   ["DemoAsset", "demoAssetAbi"],
 ];
 
@@ -44,6 +45,7 @@ const deployment = {
   osmo: addr("Osmo"),
   registry: addr("UsernameRegistry"),
   welcome: addr("Welcome"),
+  charities: addr("Charities"),
 };
 
 const abis = Object.fromEntries(CONTRACTS.map(([name]) => [name, abiOf(name)]));
@@ -61,7 +63,7 @@ if (check) {
 } else {
   writeFileSync(target, out);
   // Keep the ABIs in the deployments file too, for anyone reading it without the app.
-  for (const name of ["Osmo", "UsernameRegistry", "Welcome"]) if (d.contracts?.[name]) d.contracts[name].abi = abis[name];
+  for (const name of ["Osmo", "UsernameRegistry", "Welcome", "Charities"]) if (d.contracts?.[name]) d.contracts[name].abi = abis[name];
   writeFileSync(deploymentsFile, JSON.stringify(d, null, 2) + "\n");
   // The demo client (demo/index.html) loads its addresses from here.
   if (network === "monad-testnet") {

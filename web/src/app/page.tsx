@@ -10,6 +10,8 @@ import { useStore } from "@/lib/store";
 import { FeedCard } from "@/components/feed-card";
 import { Screen, SearchBar } from "@/components/shell";
 import { AssetDot, Avatar, DemoNote, EmptyState, Mark } from "@/components/ui";
+import { CharityLogo } from "@/components/charity-ui";
+import { FEATURED } from "@/lib/charities";
 
 const noSub = () => () => {};
 function greetingNow() {
@@ -19,7 +21,7 @@ function greetingNow() {
 
 export default function HomePage() {
   const ok = useRequireAccount();
-  const { me, people, feed, canSee, totalUsd, cashUsd, requests, friends, addFriend, personOf, hideBalances } = useStore();
+  const { me, people, feed, canSee, totalUsd, cashUsd, requests, friends, addFriend, personOf, hideBalances, charities } = useStore();
   const greet = useSyncExternalStore(noSub, greetingNow, () => "Hi");
   const [scope, setScope] = useState<"friends" | "everyone">("friends");
   if (!ok || !me) return <Screen tabs={false}>{null}</Screen>;
@@ -33,7 +35,7 @@ export default function HomePage() {
 
   return (
     <Screen>
-      <SearchBar />
+      <SearchBar give={charities.length > 0} />
       <p className="px-5 pb-2 text-[22px] font-semibold tracking-tight">
         {greet}, {me.name.split(" ")[0]}
       </p>
@@ -78,6 +80,21 @@ export default function HomePage() {
           </Link>
         </div>
       </div>
+
+      {charities.length > 0 && (
+        <Link href="/give" className="mx-4 mt-3 flex items-center gap-3 rounded-[22px] bg-white px-4 py-3">
+          <span className="flex -space-x-2.5">
+            {[FEATURED, "stjude", "redcross", "msf"].filter((h) => charities.some((c) => c.handle === h)).map((h) => (
+              <CharityLogo key={h} handle={h} size={34} ring />
+            ))}
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-[15px] font-semibold">Give to a cause</span>
+            <span className="block truncate text-[13px] text-muted">Stocks or crypto, with a receipt for taxes</span>
+          </span>
+          <ChevronRight size={18} className="text-muted" />
+        </Link>
+      )}
 
       {waiting > 0 && (
         <Link href="/requests" className="mx-4 mt-3 flex items-center gap-3 rounded-[22px] bg-white px-4 py-3">
