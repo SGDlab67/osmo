@@ -14,6 +14,8 @@ export const config = {
   osmo: (env(process.env.NEXT_PUBLIC_OSMO) ?? deployment.osmo) as `0x${string}`,
   registry: (env(process.env.NEXT_PUBLIC_REGISTRY) ?? deployment.registry) as `0x${string}`,
   welcome: (env(process.env.NEXT_PUBLIC_WELCOME) ?? deployment.welcome) as `0x${string}`,
+  /** The curated nonprofit registry. Zero address when it isn't deployed, and Give hides itself. */
+  charities: (env(process.env.NEXT_PUBLIC_CHARITIES) ?? deployment.charities) as `0x${string}`,
 };
 
 /** MonadScan (Etherscan's explorer for Monad), where "View on MonadScan" links go. */
