@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import type { LucideIcon } from "lucide-react";
+import { Check, type LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
 import { META } from "@/lib/assets";
 import { countryName, flagOf } from "@/lib/countries";
@@ -185,10 +185,17 @@ export function PicturePicker({ value, onPick }: { value: string; onPick: (id: s
             key={id}
             type="button"
             aria-label={id}
+            aria-pressed={value === id}
             onClick={() => onPick(id)}
-            className={`aspect-square rounded-full bg-chip bg-cover bg-center ${value === id ? "ring-[3px] ring-brand ring-offset-2" : ""}`}
+            className={`relative aspect-square rounded-full bg-chip bg-cover bg-center transition-transform active:scale-95 ${value === id ? "ring-[3px] ring-brand ring-offset-2 ring-offset-page" : ""}`}
             style={{ backgroundImage: `url(${pictureUrl(id)})`, imageRendering: id.startsWith("px") ? "pixelated" : undefined }}
-          />
+          >
+            {value === id && (
+              <span className="absolute -bottom-0.5 -right-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-brand text-white ring-2 ring-page">
+                <Check size={12} strokeWidth={3.2} />
+              </span>
+            )}
+          </button>
         ))}
       </div>
     </div>

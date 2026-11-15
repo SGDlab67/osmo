@@ -9,13 +9,13 @@ import { addressUrl } from "@/lib/chain";
 import { useRequireAccount } from "@/lib/hooks";
 import { useStore } from "@/lib/store";
 import { BackHeader, Screen } from "@/components/shell";
-import { PinField, pinOk } from "@/components/pin-field";
+import { PASSWORD_HINT, PasswordField, passwordOk } from "@/components/password-field";
 import { Card, Picture, PicturePicker, PrimaryButton, SectionTitle, Sheet } from "@/components/ui";
 
 export default function SettingsPage() {
   const ok = useRequireAccount();
   const router = useRouter();
-  const { me, account, saveProfile, signOut, setPin, hideBalances, toggleHideBalances } = useStore();
+  const { me, account, saveProfile, signOut, setPassword, hideBalances, toggleHideBalances } = useStore();
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState("");
   const [picture, setPicture] = useState("");
@@ -24,6 +24,7 @@ export default function SettingsPage() {
   const [login, setLogin] = useState<{ ready: boolean; set: boolean } | null>(null);
   const [numberOpen, setNumberOpen] = useState(false);
   const [number, setNumber] = useState("");
+  const [again, setAgain] = useState("");
   const [numberError, setNumberError] = useState("");
   const myHandle = me?.handle;
   useEffect(() => {
@@ -71,9 +72,9 @@ export default function SettingsPage() {
           <>
             <SectionTitle>Login</SectionTitle>
             <Card className="!py-1">
-              <button type="button" onClick={() => { setNumber(""); setNumberError(""); setNumberOpen(true); }} className={row}>
+              <button type="button" onClick={() => { setNumber(""); setAgain(""); setNumberError(""); setNumberOpen(true); }} className={row}>
                 <span>
-                  Login number
+                  Password
                   <span className="block text-[13px] font-normal text-muted">{login.set ? "Set. Log in on any phone with @" + me.handle : "Not set. Without it, signing out loses this wallet."}</span>
                 </span>
                 <span className="text-[14px] text-brand">{login.set ? "Change" : "Set"}</span>
@@ -106,7 +107,7 @@ export default function SettingsPage() {
         <button
           type="button"
           onClick={() => {
-            if (confirm(login?.set ? `Sign out? You can log back in with @${me.handle} and your number.` : "Sign out? The test assets on this phone can't be recovered.")) {
+            if (confirm(login?.set ? `Sign out? You can log back in with @${me.handle} and your password.` : "Sign out? The test assets on this phone can't be recovered.")) {
               signOut();
               router.replace("/welcome");
             }
@@ -117,27 +118,31 @@ export default function SettingsPage() {
         </button>
       </div>
 
-      <Sheet open={numberOpen} onClose={() => setNumberOpen(false)} title={login?.set ? "Change your number" : "Set a login number"}>
-        <PinField value={number} onChange={setNumber} label="A number from 1 to 9999" autoComplete="new-password" />
+      <Sheet open={numberOpen} onClose={() => setNumberOpen(false)} title={login?.set ? "Change your password" : "Set a password"}>
+        <PasswordField value={number} onChange={setNumber} label="New password" autoComplete="new-password" autoFocus />
+        <div className="mt-3">
+          <PasswordField value={again} onChange={setAgain} label="Confirm password" placeholder="Type it again" autoComplete="new-password" state={again ? (again === number ? "ok" : "bad") : undefined} />
+        </div>
+        <p className="mt-2 px-1 text-[12px] text-muted">{PASSWORD_HINT}</p>
         {numberError && <p className="mt-2 text-[14px] text-down">{numberError}</p>}
         <PrimaryButton
           className="mt-4"
-          disabled={saving || !pinOk(number)}
+          disabled={saving || !passwordOk(number) || again !== number}
           onClick={async () => {
             setSaving(true);
             setNumberError("");
             try {
-              await setPin(me.handle, number);
+              await setPassword(me.handle, number);
               setLogin((l) => (l ? { ...l, set: true } : l));
               setNumberOpen(false);
             } catch (e) {
-              setNumberError(e instanceof Error ? e.message : "Couldn't save the number.");
+              setNumberError(e instanceof Error ? e.message : "Couldn't save the password.");
             } finally {
               setSaving(false);
             }
           }}
         >
-          {saving ? "Saving…" : "Save number"}
+          {saving ? "Saving…" : "Save password"}
         </PrimaryButton>
       </Sheet>
 

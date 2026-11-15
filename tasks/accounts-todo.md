@@ -17,8 +17,12 @@ the owner pushes an empty commit (`git commit --allow-empty -m "Redeploy" && git
 
 ## A. Flexible password
 
+Done 2026-11-15 (Charlie, built with Hermes): P1 to P3, plus sign-up rebuilt as four steps (picture, name,
+username, password typed twice) and a confirm field when changing the password in Settings. The default test number
+in `login.test.mjs` moved from 4321 to 5823 because 4321 is now on the denylist. Section B (photo upload) is not started.
+
 ### P1 [agent] Generalize the login core to passwords
-- [ ] Done
+- [x] Done
 
 In `web/src/lib/login.ts`:
 - Add `parsePassword(v: unknown): string | null`: must be a string; normalize with `.normalize("NFKC")`; length 4 to 64 after normalization (count code points, not bytes); reject control characters; return the string.
@@ -39,7 +43,7 @@ Verification: `cd web && npm test`.
 Files: `web/src/lib/login.ts`, `web/test/login.test.mjs`. Scope: M. Depends on: none.
 
 ### P2 [agent] Routes accept `password`
-- [ ] Done
+- [x] Done
 
 In `web/src/app/api/auth/login/route.ts` and `web/src/app/api/auth/pin/route.ts` read `password` and fall back to
 `pin` from the body. Do not rename the routes (the live app calls them). Update the error text from "number" to
@@ -50,7 +54,7 @@ Verification: gate; manual with `curl` against `next dev` using `@ana`'s public 
 Files: the two route files, `web/src/lib/login.ts`. Scope: S. Depends on: P1.
 
 ### P3 [agent] Password field and copy
-- [ ] Done
+- [x] Done
 
 Replace `web/src/components/pin-field.tsx` with `password-field.tsx`: a text-capable password input (not
 digits only; no `inputMode="numeric"`), a show/hide eye button, `autoComplete` as a prop (`new-password` when
