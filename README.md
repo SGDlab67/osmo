@@ -8,6 +8,8 @@ for. Or send it as a link to someone who has no wallet yet.**
 
 Built for Monad Blitz Oregon, 2026-11-15. Live on Monad testnet.
 
+**Live app:** https://osmo-beta.vercel.app (testnet, test tokens only)
+
 ## Why
 
 Sending a friend a little stock is still a walled garden.
@@ -412,4 +414,4 @@ lose is gas. Threat model, controls and known ceilings are in [`services/README.
 
 ## Licence
 
-MIT.
+MIT. See `LICENSE`.
