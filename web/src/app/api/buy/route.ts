@@ -30,6 +30,8 @@ export async function POST(req: Request) {
     });
     return Response.json({ ok: receipt.status === "success", hash: receipt.transactionHash, units: usd / price, ms: Date.now() - started });
   } catch (e) {
-    return Response.json({ error: e instanceof Error ? e.message.split("\n")[0] : "Buy failed" }, { status: 500 });
+    const m = e instanceof Error ? e.message : String(e);
+    const msg = /insufficient funds/i.test(m) ? "The app's wallet is out of MON for gas. Top it up from the faucet." : m.split("\n")[0].slice(0, 160);
+    return Response.json({ error: msg }, { status: 500 });
   }
 }

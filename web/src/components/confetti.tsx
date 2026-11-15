@@ -16,7 +16,7 @@ export function Confetti() {
     [],
   );
   return (
-    <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
+    <div aria-hidden className="pointer-events-none absolute inset-0 z-0 overflow-hidden opacity-80">
       <style>{`@keyframes fall{0%{transform:translateY(-20px) rotate(0)}100%{transform:translateY(110vh) rotate(540deg);opacity:.2}}`}</style>
       {bits.map((b, i) => (
         <span key={i} className="absolute top-0 block h-3 w-2 rounded-[2px]" style={{ left: `${b.left}%`, background: b.color, transform: `rotate(${b.rot}deg)`, animation: `fall ${b.dur}s ${b.delay}s ease-in both` }} />

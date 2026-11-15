@@ -2,6 +2,7 @@
 pragma solidity ^0.8.28;
 
 import {Script, console} from "forge-std/Script.sol";
+import {VmSafe} from "forge-std/Vm.sol";
 
 import {DemoAsset} from "../src/DemoAsset.sol";
 import {Osmo} from "../src/Osmo.sol";
@@ -84,7 +85,12 @@ contract Deploy is Script {
 
         vm.stopBroadcast();
 
-        _write(usernames, osmo, welcome, address(share), deployBlock, list);
+        // A dry run (no --broadcast) must not overwrite the live addresses with simulated ones.
+        if (vm.isContext(VmSafe.ForgeContext.ScriptBroadcast) || vm.isContext(VmSafe.ForgeContext.ScriptResume)) {
+            _write(usernames, osmo, welcome, address(share), deployBlock, list);
+        } else {
+            console.log("dry run: deployments file left as it is");
+        }
 
         console.log("chain id        ", block.chainid);
         console.log("UsernameRegistry", address(usernames));

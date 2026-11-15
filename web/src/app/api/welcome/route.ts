@@ -14,6 +14,9 @@ export async function POST(req: Request) {
   const { address, profile = "" } = (await req.json().catch(() => ({}))) as { address?: string; profile?: string };
   if (!address || !isAddress(address)) return Response.json({ error: "Send a wallet address." }, { status: 400 });
 
+  if (config.welcome === "0x0000000000000000000000000000000000000000")
+    return Response.json({ error: "Osmo isn't deployed on this network yet. Run script/Deploy.s.sol, then npm run contracts." }, { status: 503 });
+
   const already = await publicClient.readContract({ address: config.welcome, abi: welcomeAbi, functionName: "welcomed", args: [address] });
   if (already) return Response.json({ ok: true, already: true });
 
@@ -27,6 +30,15 @@ export async function POST(req: Request) {
     });
     return Response.json({ ok: receipt.status === "success", hash: receipt.transactionHash, ms: Date.now() - started });
   } catch (e) {
-    return Response.json({ error: e instanceof Error ? e.message.split("\n")[0] : "Welcome failed" }, { status: 500 });
+    return Response.json({ error: friendly(e) }, { status: 500 });
   }
+}
+
+/** Turn the usual failures into a sentence someone at a demo table can act on. */
+function friendly(e: unknown) {
+  const m = e instanceof Error ? e.message : String(e);
+  if (/insufficient funds|gas required exceeds|InsufficientBalance/i.test(m)) return "The app's sign-up wallet is out of MON. Top it up from the Monad faucet and try again.";
+  if (/NotOperator/.test(m)) return "The server's wallet isn't allowed to sign people up. Deploy with RELAYER set to it.";
+  if (/fetch failed|ECONN|timeout|429/i.test(m)) return "Couldn't reach Monad just now. Try again in a few seconds.";
+  return m.split("\n")[0].slice(0, 160);
 }

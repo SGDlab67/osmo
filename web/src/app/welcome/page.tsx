@@ -20,7 +20,7 @@ function suggestHandle(name: string) {
 
 export default function WelcomePage() {
   const router = useRouter();
-  const { ready, account, join } = useStore();
+  const { ready, account, join, status } = useStore();
   const [stage, setStage] = useState<"splash" | "profile" | "creating" | "done">("splash");
   const [name, setName] = useState("");
   const [handleTyped, setHandleTyped] = useState<string | null>(null);
@@ -197,7 +197,8 @@ export default function WelcomePage() {
 
       <div className="flex-1" />
       {error && <p className="mb-3 text-center text-[14px] text-down">{error}</p>}
-      <PrimaryButton className="mt-6" disabled={!valid || !agreed || isTaken !== false} onClick={create}>
+      {status === "missing" && <p className="mb-3 text-center text-[14px] text-down">Osmo isn&apos;t deployed on this network yet, so accounts can&apos;t be made.</p>}
+      <PrimaryButton className="mt-6" disabled={!valid || !agreed || isTaken !== false || status === "missing"} onClick={create}>
         Create my account
       </PrimaryButton>
 
