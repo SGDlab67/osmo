@@ -81,9 +81,13 @@ pre-funded.
 
 | Contract | What it does |
 | --- | --- |
-| `MockShare` | Stand-in for a tokenized stock on testnet |
 | `UsernameRegistry` | One name per address, case-insensitive, reverts on an unclaimed name |
 | `Osmo` | Send any token or MON by name, with a note, as yourself, as someone's agent, by standing order, or as a claim link |
+| `Welcome` | The phone app's layer: starter kit and gas for a new wallet in one relayed transaction, profiles, the member list, money requests, and the simulated Buy |
+| `DemoAsset` | Stand-in for a tokenized stock, coin or stablecoin on testnet, one clone per asset (23 of them), mintable only by `Welcome` |
+
+`MockShare` now lives in `test/mocks/` and is used only by the tests; on
+testnet the demo share is test NVIDIA, the same token the app uses.
 
 `Osmo` has no owner and sends the token you already hold: no
 wrapper, no allowlist. The only value it ever holds is unclaimed links,
@@ -142,6 +146,11 @@ on 2026-11-15 from block 80017489, and `Osmo` in block 80023566.
 
 Addresses and ABIs are also in `deployments/monad-testnet.json`.
 
+This is the deployment from before the app's layer was merged in. The next
+run of `script/Deploy.s.sol` deploys everything together (registry, `Osmo`,
+`Welcome` and the 23 demo assets), rewrites `deployments/monad-testnet.json`,
+and `npm run contracts` points the app and the demo client at it.
+
 ## Rehearsed on Monad testnet
 
 Run on 2026-11-15 from the deployer account, which claimed the name
@@ -181,13 +190,35 @@ Deploy:
 # one time: import the deployer into Foundry's encrypted keystore
 cast wallet import monad-deployer --interactive
 
-forge script script/Deploy.s.sol:Deploy \
+RELAYER=<app server wallet> script/with-deployer.sh forge script script/Deploy.s.sol:Deploy \
   --rpc-url monad_testnet \
   --account monad-deployer \
   --broadcast
+
+# point the app and the demo client at what was just deployed, then commit
+cd web && npm run contracts
 ```
 
+One script deploys the whole set and writes every address to
+`deployments/monad-testnet.json` (on anvil: `deployments/local.json`,
+gitignored). `npm run contracts` turns that file and forge's build output
+into `web/src/lib/contracts.ts` (ABIs and addresses) and
+`demo/deployment.js`, so nothing is copied by hand. CI runs the contract
+checks and tests, then fails if `contracts.ts` is out of date, then lints and
+builds the app.
+
 Never pass a private key on the command line.
+
+### Repo layout
+
+| Path | What's there |
+| --- | --- |
+| `src/` | The contracts: `Osmo`, `UsernameRegistry`, `Welcome`, `DemoAsset` |
+| `test/` | Forge tests (`test/mocks/MockShare.sol` for the agent tests) |
+| `script/Deploy.s.sol` | Deploys everything and writes `deployments/<network>.json` |
+| `deployments/` | Live addresses and ABIs, the single source the clients read |
+| `web/` | The phone app (Next.js); `web/src/lib/contracts.ts` is generated |
+| `demo/` | The one-file demo client |
 
 ## The demo client
 
@@ -264,8 +295,7 @@ Friends, reactions and the hide-amounts switch are kept on the phone. Payments, 
 | `DemoAsset` | One test token per asset: USDC, USDT, PYUSD, DAI, EURC, NVDA, TSLA, AAPL, GOOGL, AMZN, META, MSFT, NFLX, COIN, CRCL, PAXG, XAUT, KAG, USDY, BUIDL, BTC, ETH, SOL. Deployed once and cloned (EIP-1167) for each asset so listing 23 is cheap. Mintable only by `Welcome`; `Osmo` can move it without an approval, so paying is one transaction |
 | `Welcome` | Lists the demo assets; once per wallet gives a starter kit ($25 USDC, $15 NVIDIA, $10 Tesla, $10 Bitcoin at today's prices) and MON for gas; keeps the member list, each member's profile and money requests on-chain so the app can list them without scanning logs; `grant` lets the server fill simulated Buys |
 
-Deploy next to the existing contracts with `script/DeployApp.s.sol`:
-`OSMO=0xC2f251c89Fac09830dadAb1Fc67Da885F01Bb45e RELAYER=<server wallet> forge script script/DeployApp.s.sol:DeployApp --rpc-url monad_testnet --account <deployer> --broadcast`.
+They deploy with everything else from `script/Deploy.s.sol` (see Run it).
 Addresses: **to be filled in after the Monad deploy.**
 
 "Private" puts a marker in front of the note so the app shows the payment only to the two people. The chain is public
@@ -284,10 +314,13 @@ either way, and the app says so.
 
 ```bash
 cd web
-cp .env.example .env.local   # set NEXT_PUBLIC_WELCOME and RELAYER_KEY (server only, never committed)
+cp .env.example .env.local   # set RELAYER_KEY (server only, never committed); addresses come from deployments/
 npm install
-node --env-file=.env.local scripts/seed-demo.mjs   # once per deploy: the eight sample people and their payments
+npm run seed                 # once per deploy: the eight sample people and their payments
 npm run dev
+
+# against a local anvil chain instead (after deploying there with script/Deploy.s.sol):
+NETWORK=local npm run contracts && NETWORK=local npm run seed && npm run dev
 ```
 
 Prices come from CoinGecko through `/api/prices`, cached for a minute; dollar coins are pinned to $1. The phone

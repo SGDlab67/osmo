@@ -67,7 +67,9 @@ contract WelcomeTest is Test {
         assertEq(welcome.profileOf(bob), "Bob Lee|frog|CA");
         vm.prank(bob);
         vm.expectRevert(Welcome.ProfileTooLong.selector);
-        welcome.setProfile("0123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890");
+        welcome.setProfile(
+            "0123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890"
+        );
     }
 
     function test_requestsOpenAndClose() public {

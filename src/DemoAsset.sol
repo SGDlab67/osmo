@@ -34,7 +34,13 @@ contract DemoAsset {
         minter = address(1);
     }
 
-    function initialize(string calldata name_, string calldata symbol_, uint8 decimals_, address minter_, address spender_) external {
+    function initialize(
+        string calldata name_,
+        string calldata symbol_,
+        uint8 decimals_,
+        address minter_,
+        address spender_
+    ) external {
         if (minter != address(0)) revert AlreadyInitialized();
         if (minter_ == address(0) || spender_ == address(0)) revert ZeroAddress();
         name = name_;

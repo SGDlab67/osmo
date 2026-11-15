@@ -1,27 +1,32 @@
 // Creates the app's sample people on-chain, each with their own wallet, profile and username, and a few
 // payments between them, so the feed has life before the room joins.
 //
-//   cd web && node --env-file=.env.local scripts/seed-demo.mjs
+//   cd web && npm run seed                       # Monad testnet, addresses from deployments/monad-testnet.json
+//   NETWORK=local npm run seed                   # a local anvil deploy
 //
-// Needs NEXT_PUBLIC_RPC, NEXT_PUBLIC_CHAIN_ID, NEXT_PUBLIC_WELCOME, NEXT_PUBLIC_REGISTRY, NEXT_PUBLIC_OSMO and
-// RELAYER_KEY (an operator of Welcome). The sample wallets' keys are derived from a public string on purpose:
+// Needs RELAYER_KEY (an operator of Welcome) in .env.local. The chain and addresses come from the
+// deployments file; NEXT_PUBLIC_ env vars override them. The sample wallets' keys are derived from a public string on purpose:
 // they only ever hold test tokens.
 import { createPublicClient, createWalletClient, defineChain, http, keccak256, toBytes } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
+import { readFileSync } from "node:fs";
 
 const env = process.env;
+const dep = JSON.parse(readFileSync(new URL(`../../deployments/${env.NETWORK ?? "monad-testnet"}.json`, import.meta.url), "utf8"));
+const pick = (v, d) => (v && v.trim() ? v.trim() : d);
 const chain = defineChain({
-  id: Number(env.NEXT_PUBLIC_CHAIN_ID ?? 10143),
+  id: Number(pick(env.NEXT_PUBLIC_CHAIN_ID, dep.chainId)),
   name: "chain",
   nativeCurrency: { name: "MON", symbol: "MON", decimals: 18 },
-  rpcUrls: { default: { http: [env.NEXT_PUBLIC_RPC ?? "https://testnet-rpc.monad.xyz"] } },
+  rpcUrls: { default: { http: [pick(env.NEXT_PUBLIC_RPC, dep.rpc)] } },
 });
 const pub = createPublicClient({ chain, transport: http() });
 const wallet = (account) => createWalletClient({ account, chain, transport: http() });
-const WELCOME = env.NEXT_PUBLIC_WELCOME;
-const REGISTRY = env.NEXT_PUBLIC_REGISTRY;
-const GRAM = env.NEXT_PUBLIC_OSMO;
-if (!WELCOME || !REGISTRY || !GRAM || !env.RELAYER_KEY) throw new Error("Set the contract addresses and RELAYER_KEY");
+const WELCOME = pick(env.NEXT_PUBLIC_WELCOME, dep.contracts.Welcome?.address);
+const REGISTRY = pick(env.NEXT_PUBLIC_REGISTRY, dep.contracts.UsernameRegistry?.address);
+const GRAM = pick(env.NEXT_PUBLIC_OSMO, dep.contracts.Osmo?.address);
+if (!WELCOME || !REGISTRY || !GRAM) throw new Error("No Welcome in the deployments file yet: run script/Deploy.s.sol first");
+if (!env.RELAYER_KEY) throw new Error("Set RELAYER_KEY in web/.env.local");
 const relayer = privateKeyToAccount(env.RELAYER_KEY);
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 

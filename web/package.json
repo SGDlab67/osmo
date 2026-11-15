@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "contracts": "node scripts/sync-contracts.mjs",
+    "seed": "node --env-file-if-exists=.env.local scripts/seed-demo.mjs"
   },
   "dependencies": {
     "lucide-react": "^1.73.0",

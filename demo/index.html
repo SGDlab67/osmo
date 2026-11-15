@@ -10,6 +10,7 @@
 <link rel="apple-touch-icon" href="icon.png">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.13.5/ethers.umd.min.js"></script>
 <script src="demo-keys.js"></script>
+<script src="deployment.js"></script>
 <style>
   :root { --bg:#0b0d10; --card:#15181d; --line:#262b33; --fg:#e8ecf1; --dim:#8b95a3; --accent:#3ddc97; }
   * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
@@ -102,7 +103,9 @@
 </div>
 
 <script>
-// Fill these in after `forge script script/Deploy.s.sol:Deploy`.
+// Addresses come from deployment.js, which `npm run contracts` in web/ writes from
+// deployments/monad-testnet.json after `forge script script/Deploy.s.sol:Deploy`.
+// The values below are the fallback.
 // The demo accounts come from demo-keys.js, which is gitignored: throwaway
 // testnet keys, pre-funded before the demo so a judge can send without
 // installing a wallet. Never put a key with real value there.
@@ -115,6 +118,7 @@ const CHAINS = {
     share: "0xc8045312f9739E980A6f8208Ea25aF2FDA2558EA"
   }
 };
+if (window.DEPLOYMENT) Object.assign(CHAINS.monad, window.DEPLOYMENT);
 const DEMO_KEYS = window.DEMO_KEYS || { alice: "", bob: "" };
 
 const ABI = {
