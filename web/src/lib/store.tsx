@@ -3,12 +3,13 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { PrivateKeyAccount } from "viem/accounts";
 import { registryAbi, osmoAbi, welcomeAbi } from "./abi";
-import { META, MON_GAS_RESERVE, balancesOf, loadTokens, toRaw, unitsFor, type Token } from "./assets";
+import { META, MON_GAS_RESERVE, balancesOf, toRaw, unitsFor, type Token } from "./assets";
 import { createWallet, forgetWallet, loadWallet, saveName } from "./burner";
 import { publicClient, sendAndConfirm, type Sent } from "./chain";
 import { config } from "./config";
-import { PRIVATE_MARK, readFeed, sentBlockCount, type Payment } from "./feed";
-import { DEMO_PEOPLE, EVENT_PEOPLE, EVENT_TAG, defaultPicture, encodeProfile, loadMembers, type Person } from "./people";
+import { PRIVATE_MARK, type Payment } from "./feed";
+import { DEMO_PEOPLE, EVENT_PEOPLE, EVENT_TAG, defaultPicture, encodeProfile, type Person } from "./people";
+import { fromWire, type MoneyRequest, type WireState } from "./state";
 
 export interface Quote {
   price: number;
@@ -16,14 +17,7 @@ export interface Quote {
   spark?: number[];
 }
 
-export interface MoneyRequest {
-  id: number;
-  from: string;
-  payer: string;
-  usd: number;
-  note: string;
-  status: "open" | "paid" | "declined" | "cancelled";
-}
+export type { MoneyRequest } from "./state";
 
 const STATUS = ["open", "paid", "declined", "cancelled"] as const;
 const ZERO = "0x0000000000000000000000000000000000000000";
@@ -115,7 +109,6 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [block, setBlock] = useState<bigint | null>(null);
   const [status, setStatus] = useState<ChainStatus>(config.welcome === ZERO ? "missing" : "loading");
   const fails = useRef(0);
-  const seen = useRef({ sends: -1, members: -1, requests: -1 });
   const [arrivals, setArrivals] = useState<Payment[]>([]);
   // Payment ids already on screen when this account's feed first loaded, so only new ones notify.
   const known = useRef<{ who: string; ids: Set<string> } | null>(null);
@@ -140,25 +133,6 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
-  // The asset list comes from Welcome. Keep retrying until it loads: one failed request must not leave the app blank.
-  useEffect(() => {
-    if (config.welcome === ZERO) return;
-    let alive = true;
-    let wait = 1000;
-    const attempt = () =>
-      loadTokens()
-        .then((t) => alive && setTokens(t))
-        .catch(() => {
-          if (!alive) return;
-          setStatus("offline");
-          setTimeout(attempt, wait);
-          wait = Math.min(wait * 2, 8000);
-        });
-    attempt();
-    return () => {
-      alive = false;
-    };
-  }, []);
 
   useEffect(() => {
     let alive = true;
@@ -175,68 +149,51 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  const loadRequests = useCallback(async (count: number) => {
-    const idx = Array.from({ length: Math.min(count, 60) }, (_, i) => count - 1 - i);
-    const rows = await Promise.all(idx.map((i) => publicClient.readContract({ address: config.welcome, abi: welcomeAbi, functionName: "requests", args: [BigInt(i)] })));
-    const names = await Promise.all(
-      rows.flatMap(([from, payer]) => [from, payer]).map((a) => publicClient.readContract({ address: config.registry, abi: registryAbi, functionName: "nameOf", args: [a] })),
-    );
-    return rows.map(([, , cents, status, note], k) => ({
-      id: idx[k],
-      from: names[k * 2].toLowerCase(),
-      payer: names[k * 2 + 1].toLowerCase(),
-      usd: Number(cents) / 100,
-      note,
-      status: STATUS[Number(status)] ?? "open",
-    }));
-  }, []);
 
-  // Poll Monad every 1.5 seconds: the block, new payments, new people, new requests, and my balances when anything moved.
+  // Every phone reads the room's shared state from /api/state (one CDN-cached copy for everyone), not the
+  // chain itself. It only touches Monad for its own balances and its own transactions.
+  const sync = useRef<(fresh?: boolean) => Promise<void>>(async () => {});
   useEffect(() => {
-    if (tokens.length === 0) return;
+    if (config.welcome === ZERO) return;
     let alive = true;
-    seen.current = { sends: -1, members: -1, requests: -1 };
-    const tick = async () => {
+    let lastSends = -1;
+    let tokenList: Token[] = [];
+    const tick = async (fresh = false) => {
       try {
-        const [b, sends, memberCount, requestCount] = await Promise.all([
-          publicClient.getBlockNumber(),
-          sentBlockCount(),
-          publicClient.readContract({ address: config.welcome, abi: welcomeAbi, functionName: "memberCount" }).then(Number),
-          publicClient.readContract({ address: config.welcome, abi: welcomeAbi, functionName: "requestCount" }).then(Number),
-        ]);
+        const res = await fetch(fresh ? `/api/state?fresh=${Date.now()}` : "/api/state", { cache: "no-store" });
+        if (!res.ok) throw new Error(String(res.status));
+        const st = (await res.json()) as WireState;
         if (!alive) return;
         fails.current = 0;
         setStatus("live");
-        setBlock(b);
-        if (memberCount !== seen.current.members) {
-          seen.current.members = memberCount;
-          loadMembers().then((p) => alive && setMembers(p)).catch(() => {});
+        setBlock(BigInt(st.block));
+        if (st.tokens.length !== tokenList.length) {
+          tokenList = st.tokens;
+          setTokens(st.tokens);
         }
-        if (requestCount !== seen.current.requests) {
-          seen.current.requests = requestCount;
-          loadRequests(requestCount).then((r) => alive && setRequests(r)).catch(() => {});
-        }
-        if (sends !== seen.current.sends) {
-          seen.current.sends = sends;
-          const [items, bal] = await Promise.all([readFeed(tokens, sends), account ? balancesOf(account.address, tokens) : Promise.resolve(null)]);
-          if (!alive) return;
-          setFeed(items);
-          if (bal) setBalances(bal);
+        setMembers(st.members);
+        setRequests(st.requests);
+        const items = st.feed.map(fromWire);
+        setFeed(items);
+        if (st.sends !== lastSends || fresh) {
+          lastSends = st.sends;
+          if (account) balancesOf(account.address, st.tokens).then((b) => alive && setBalances(b)).catch(() => {});
           if (handle) {
             if (known.current?.who !== handle) known.current = { who: handle, ids: new Set(items.map((p) => p.id)) };
             else {
-              const fresh = items.filter((p) => !known.current!.ids.has(p.id));
-              fresh.forEach((p) => known.current!.ids.add(p.id));
-              const mine = fresh.filter((p) => p.to === handle && p.from !== handle);
+              const fresh2 = items.filter((p) => !known.current!.ids.has(p.id));
+              fresh2.forEach((p) => known.current!.ids.add(p.id));
+              const mine = fresh2.filter((p) => p.to === handle && p.from !== handle);
               if (mine.length) setArrivals((a) => [...a, ...mine.reverse()].slice(-5));
             }
           }
         }
       } catch {
-        // One slow block or dropped request is normal; three in a row means we've lost Monad.
+        // One slow response is normal; three in a row means we've lost Monad.
         if (alive && ++fails.current >= 3) setStatus("offline");
       }
     };
+    sync.current = tick;
     tick();
     // Check every second while the app is on screen; pause in the background and catch up on return.
     const t = setInterval(() => document.visibilityState === "visible" && tick(), 1000);
@@ -247,7 +204,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       clearInterval(t);
       document.removeEventListener("visibilitychange", back);
     };
-  }, [tokens, account, handle, loadRequests]);
+  }, [account, handle]);
 
   const people = useMemo(() => {
     const joined = new Set(members.map((m) => m.handle));
@@ -302,14 +259,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     saveName(input.handle);
     setAccount(acct);
     setHandle(input.handle);
-    seen.current = { sends: -1, members: -1, requests: -1 };
   }, []);
 
   const closeRequest = useCallback(
     async (id: number, status: "paid" | "declined" | "cancelled") => {
       if (!account) return;
       await sendAndConfirm(account, { address: config.welcome, abi: welcomeAbi, functionName: "closeRequest", args: [BigInt(id), STATUS.indexOf(status)] });
-      seen.current.requests = -1;
+      void sync.current(true);
     },
     [account],
   );
@@ -329,7 +285,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         ? await sendAndConfirm(account, { address: config.osmo, abi: osmoAbi, functionName: "sendNative", args: [input.to, memo], value })
         : await sendAndConfirm(account, { address: config.osmo, abi: osmoAbi, functionName: "sendToken", args: [t.address, input.to, value, memo] });
       if (input.requestId !== undefined) await closeRequest(input.requestId, "paid").catch(() => {});
-      seen.current.sends = -1;
+      void sync.current(true);
       return { ...sent, units: input.usd / price };
     },
     [account, tokens, prices, spendable, closeRequest],
@@ -343,7 +299,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         if (payer === ZERO) throw new Error(`@${h} hasn't joined yet`);
         await sendAndConfirm(account, { address: config.welcome, abi: welcomeAbi, functionName: "request", args: [payer, BigInt(Math.round(usdEach * 100)), note] });
       }
-      seen.current.requests = -1;
+      void sync.current(true);
     },
     [account],
   );
@@ -364,7 +320,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     async (name: string, picture: string, country: string) => {
       if (!account) return;
       await sendAndConfirm(account, { address: config.welcome, abi: welcomeAbi, functionName: "setProfile", args: [encodeProfile(name, picture, country)] });
-      setMembers(await loadMembers());
+      await sync.current(true);
     },
     [account],
   );

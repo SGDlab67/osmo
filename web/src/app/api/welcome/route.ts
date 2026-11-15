@@ -10,6 +10,16 @@ import { allow, tooMany } from "@/lib/guard";
  * starter kit and a little MON for gas, in one transaction. The relayer key never reaches the browser.
  */
 export async function POST(req: Request) {
+  try {
+    return await handle(req);
+  } catch (e) {
+    const m = e instanceof Error ? e.message : String(e);
+    const msg = /429|rate limit/i.test(m) ? "Monad is busy right now. Try again in a few seconds." : /fetch failed|timeout|ECONN/i.test(m) ? "Couldn't reach Monad just now. Try again in a few seconds." : m.split("\n")[0].slice(0, 160);
+    return Response.json({ error: msg }, { status: 503 });
+  }
+}
+
+async function handle(req: Request) {
   if (!allow("welcome", 120)) return tooMany(); // a room of 100 fits; a flood does not
   const key = process.env.RELAYER_KEY as `0x${string}` | undefined;
   if (!key) return Response.json({ error: "The server has no RELAYER_KEY set." }, { status: 500 });

@@ -21,3 +21,13 @@ export const monadscan =
   env(process.env.NEXT_PUBLIC_MONADSCAN) ?? (config.chainId === 143 ? "https://monadscan.com" : "https://testnet.monadscan.com");
 
 export const isLocal = config.chainId === 31337;
+
+/**
+ * Every RPC the app may use, in order. Monad's public endpoints rate-limit per IP, so on Monad testnet the app
+ * spreads over several and falls through to the next on a 429. NEXT_PUBLIC_RPC (comma-separated) replaces the list.
+ */
+export const rpcs: string[] = env(process.env.NEXT_PUBLIC_RPC)
+  ? env(process.env.NEXT_PUBLIC_RPC)!.split(",").map((u) => u.trim()).filter(Boolean)
+  : config.chainId === 10143
+    ? [config.rpc, "https://rpc-testnet.monadinfra.com", "https://monad-testnet.drpc.org", "https://rpc.ankr.com/monad_testnet", "https://10143.rpc.thirdweb.com"]
+    : [config.rpc];
