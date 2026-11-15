@@ -151,4 +151,26 @@ contract WelcomeTest is Test {
         poor.welcome(bob, "");
         assertEq(bob.balance, 0);
     }
+
+    function test_roomFillsUpAndTheOwnerCanRaiseIt() public {
+        welcome.setMaxMembers(2);
+        vm.startPrank(server);
+        welcome.welcome(alice, "a");
+        welcome.welcome(bob, "b");
+        welcome.welcome(alice, "again"); // an existing member is never turned away
+        vm.expectRevert(Welcome.RoomFull.selector);
+        welcome.welcome(carol, "c");
+        vm.stopPrank();
+        assertEq(welcome.memberCount(), 2);
+        assertEq(carol.balance, 0, "a refused wallet gets nothing");
+
+        vm.prank(server);
+        vm.expectRevert(Welcome.NotOwner.selector);
+        welcome.setMaxMembers(1000);
+
+        welcome.setMaxMembers(3);
+        vm.prank(server);
+        welcome.welcome(carol, "c");
+        assertEq(welcome.memberCount(), 3);
+    }
 }

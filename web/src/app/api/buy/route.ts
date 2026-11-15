@@ -4,6 +4,7 @@ import { privateKeyToAccount } from "viem/accounts";
 import { toRaw } from "@/lib/assets";
 import { config } from "@/lib/config";
 import { publicClient, walletFor } from "@/lib/chain";
+import { allow, tooMany } from "@/lib/guard";
 import { getQuotes } from "@/lib/prices-server";
 
 /**
@@ -11,6 +12,7 @@ import { getQuotes } from "@/lib/prices-server";
  * Welcome.grant. Capped at $100 a purchase so the demo can't be drained.
  */
 export async function POST(req: Request) {
+  if (!allow("buy", 60)) return tooMany();
   const key = process.env.RELAYER_KEY as `0x${string}` | undefined;
   if (!key) return Response.json({ error: "The server has no RELAYER_KEY set." }, { status: 500 });
   const { address, symbol, usd } = (await req.json().catch(() => ({}))) as { address?: string; symbol?: string; usd?: number };
