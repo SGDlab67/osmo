@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="stablegram">
-<title>stablegram</title>
+<meta name="apple-mobile-web-app-title" content="osmo">
+<title>osmo</title>
 <link rel="apple-touch-icon" href="icon.png">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.13.5/ethers.umd.min.js"></script>
 <script src="demo-keys.js"></script>
@@ -39,7 +39,7 @@
 </style>
 </head>
 <body>
-<header><h1>stablegram</h1><span id="chainLabel"></span></header>
+<header><h1>osmo</h1><span id="chainLabel"></span></header>
 
 <div class="card">
   <div class="row">
@@ -49,6 +49,12 @@
   <p class="who" id="who">loading</p>
   <input id="newName" placeholder="claim a username" autocapitalize="off" autocorrect="off">
   <button class="ghost" id="claim">Claim</button>
+</div>
+
+<div class="card" id="claimCard" hidden>
+  <label>Someone sent you a link</label>
+  <p id="claimInfo" class="who">checking the link</p>
+  <button id="claimBtn">Claim it to this account</button>
 </div>
 
 <div class="card">
@@ -74,16 +80,15 @@
     <option value="2592000">every 30 days</option>
     <option value="31536000">every year</option>
   </select>
-  <label for="verb">Send it as</label>
-  <select id="verb">
-    <option value="Kula">Kula &middot; a gift carried across the sea</option>
-    <option value="Nomad">Nomad &middot; value with no border</option>
-    <option value="Lixi">Lixi &middot; lucky money for people you love</option>
-    <option value="Volo">Volo &middot; it flies</option>
-    <option value="Osmo">Osmo &middot; slips through every wall</option>
-  </select>
-  <button id="send">Kula it</button>
+  <button id="send">Osmo it</button>
+  <button class="ghost" id="makeLink">Or make a link anyone can claim</button>
+  <input id="linkOut" readonly hidden>
   <p id="status"></p>
+</div>
+
+<div class="card">
+  <label>Links you made</label>
+  <div id="links" class="who">none open</div>
 </div>
 
 <div class="card">
@@ -106,7 +111,7 @@ const CHAINS = {
     name: "Monad testnet", id: 10143, rpc: "https://testnet-rpc.monad.xyz",
     symbol: "MON", explorer: "https://testnet.monadvision.com",
     usernames: "0xC90654Fe34e37dd30F54f980407F1973F7959EE3",
-    gram: "0x535115B527C6c51c6Bf73B72579308b0ACe69847",
+    osmo: "0xC2f251c89Fac09830dadAb1Fc67Da885F01Bb45e",
     share: "0xc8045312f9739E980A6f8208Ea25aF2FDA2558EA"
   }
 };
@@ -118,7 +123,7 @@ const ABI = {
     "function resolve(string name) view returns (address)",
     "function nameOf(address) view returns (string)"
   ],
-  gram: [
+  osmo: [
     "function sendToken(address token, string name, uint256 value, string memo) returns (address)",
     "function sendNative(string name, string memo) payable returns (address)",
     "function createOrder(address token, string name, uint256 value, uint48 firstAt, uint48 every, string memo) returns (uint256)",
@@ -128,6 +133,13 @@ const ABI = {
     "function orders(uint256) view returns (address from, uint48 nextAt, uint48 every, address token, address to, uint256 value, string name, string memo)",
     "function sentBlockCount() view returns (uint256)",
     "function sentBlocks(uint256) view returns (uint64)",
+    "function createLink(address token, uint256 value, address key, string memo) payable returns (uint256)",
+    "function claimLink(uint256 id, address to, bytes sig)",
+    "function reclaimLink(uint256 id)",
+    "function claimDigest(uint256 id, address to) view returns (bytes32)",
+    "function linkCount() view returns (uint256)",
+    "function links(uint256) view returns (address from, address key, address token, uint256 value, string memo)",
+    "event LinkCreated(uint256 indexed id, address indexed from, address token, uint256 value)",
     "event Sent(address indexed token, address indexed from, address indexed to, string name, uint256 value, string memo, bool byAgent)"
   ],
   erc20: [
@@ -141,7 +153,7 @@ const ABI = {
 
 const $ = id => document.getElementById(id);
 const MAX = (1n << 256n) - 1n;
-let cfg, wallet, provider, names, gram, share, shareMeta;
+let cfg, wallet, provider, names, osmo, share, shareMeta;
 
 function say(msg, isError) {
   $("status").textContent = msg;
@@ -156,7 +168,7 @@ async function connect() {
   if (!key) return say("No demo key set for this account. Fill DEMO_KEYS in index.html.", true);
   wallet = new ethers.Wallet(key, provider);
   names = new ethers.Contract(cfg.usernames, ABI.usernames, wallet);
-  gram = new ethers.Contract(cfg.gram, ABI.gram, wallet);
+  osmo = new ethers.Contract(cfg.osmo, ABI.osmo, wallet);
   share = new ethers.Contract(cfg.share, ABI.erc20, wallet);
   shareMeta = { symbol: "SHARE", decimals: 18 };
   try {
@@ -179,14 +191,98 @@ async function refresh() {
     + `${(+ethers.formatEther(gas)).toFixed(4)} ${cfg.symbol} for gas`;
   loadFeed();
   loadOrders();
+  loadLinks();
+  loadClaim();
 }
+
+// --- claim links ---
+// The link carries a fresh private key in the URL fragment, which the
+// browser never sends to a server. Claiming signs the contract's digest for
+// this account with that key, so a claim seen in flight cannot be redirected.
+const amountOf = l => {
+  const native = l.token === ethers.ZeroAddress;
+  return `${ethers.formatUnits(l.value, native ? 18 : shareMeta.decimals)} ${native ? cfg.symbol : shareMeta.symbol}`;
+};
+const linkInHash = () => location.hash.match(/^#link=(\d+)\.(0x[0-9a-fA-F]{64})$/);
+
+async function loadClaim() {
+  const m = linkInHash();
+  $("claimCard").hidden = !m;
+  if (!m) return;
+  const l = await osmo.links(m[1]);
+  $("claimBtn").hidden = l.from === ethers.ZeroAddress;
+  $("claimInfo").innerHTML = l.from === ethers.ZeroAddress
+    ? "This link has already been claimed or taken back."
+    : `<span class="amt">${amountOf(l)}</span> is waiting for you${l.memo ? ": " + esc(l.memo) : "."}`;
+}
+
+$("claimBtn").onclick = async () => {
+  const [, id, secret] = linkInHash();
+  try {
+    $("claimInfo").textContent = "claiming";
+    const sig = new ethers.Wallet(secret).signingKey.sign(await osmo.claimDigest(id, wallet.address)).serialized;
+    const r = await (await osmo.claimLink(id, wallet.address, sig)).wait();
+    history.replaceState(null, "", location.pathname);
+    say(`claimed. ${cfg.explorer}/tx/${r.hash}`);
+    refresh();
+  } catch (e) { $("claimInfo").textContent = e.shortMessage || e.message; }
+};
+
+async function loadLinks() {
+  const n = Number(await osmo.linkCount().catch(() => 0n));
+  const ids = Array.from({ length: Math.min(n, 20) }, (_, i) => n - 1 - i);
+  const all = await Promise.all(ids.map(i => osmo.links(i)));
+  const html = all.map((l, k) => l.from !== wallet.address ? "" :
+    `<div class="item"><div class="memo">${esc(l.memo) || "(no note)"}</div>`
+    + `<div class="meta"><span class="amt">${amountOf(l)}</span> &middot; waiting to be claimed</div>`
+    + `<button class="ghost" data-reclaim="${ids[k]}">Take it back</button></div>`).join("");
+  $("links").innerHTML = html || "none open";
+}
+
+$("links").onclick = async e => {
+  const id = e.target.dataset.reclaim;
+  if (id === undefined) return;
+  try {
+    say("taking back link " + id);
+    const r = await (await osmo.reclaimLink(id)).wait();
+    say(`back in your account. ${cfg.explorer}/tx/${r.hash}`);
+    refresh();
+  } catch (e) { say(e.shortMessage || e.message, true); }
+};
+
+$("makeLink").onclick = async () => {
+  const memo = $("memo").value, amount = $("amount").value.trim();
+  if (!amount) return say("needs an amount", true);
+  try {
+    const native = $("asset").value === "native";
+    const value = native ? ethers.parseEther(amount) : ethers.parseUnits(amount, shareMeta.decimals);
+    if (!native && await share.allowance(wallet.address, cfg.osmo) < value) {
+      say("approving once");
+      await (await share.approve(cfg.osmo, MAX)).wait();
+    }
+    const key = ethers.Wallet.createRandom();
+    say("making the link");
+    const r = await (await osmo.createLink(native ? ethers.ZeroAddress : cfg.share, value, key.address, memo,
+                                           { value: native ? value : 0n })).wait();
+    const id = r.logs.map(l => { try { return osmo.interface.parseLog(l); } catch { return null; } })
+                     .find(ev => ev && ev.name === "LinkCreated").args.id;
+    const url = `${location.origin}${location.pathname}#link=${id}.${key.privateKey}`;
+    $("linkOut").value = url;
+    $("linkOut").hidden = false;
+    $("linkOut").select();
+    navigator.clipboard?.writeText(url).catch(() => {});
+    say("link ready and copied. Whoever opens it can claim it, so send it only to them.");
+    $("amount").value = ""; $("memo").value = "";
+    refresh();
+  } catch (e) { say(e.shortMessage || e.message, true); }
+};
 
 // Anyone may run a due order, so Run shows for every account; only the
 // writer may cancel. Showing the last 20 is plenty for a demo.
 async function loadOrders() {
-  const n = Number(await gram.orderCount().catch(() => 0n));
+  const n = Number(await osmo.orderCount().catch(() => 0n));
   const ids = Array.from({ length: Math.min(n, 20) }, (_, i) => n - 1 - i);
-  const all = await Promise.all(ids.map(i => gram.orders(i)));
+  const all = await Promise.all(ids.map(i => osmo.orders(i)));
   const now = Date.now() / 1000;
   const html = all.map((o, k) => {
     if (o.from === ethers.ZeroAddress) return ""; // cancelled
@@ -206,7 +302,7 @@ $("orders").onclick = async e => {
   if (run === undefined && cancel === undefined) return;
   try {
     say(run !== undefined ? "running order " + run : "cancelling order " + cancel);
-    const r = await (await (run !== undefined ? gram.runOrder(run) : gram.cancelOrder(cancel))).wait();
+    const r = await (await (run !== undefined ? osmo.runOrder(run) : osmo.cancelOrder(cancel))).wait();
     say(`done. ${cfg.explorer}/tx/${r.hash}`);
     refresh();
   } catch (e) { say(e.shortMessage || e.message, true); }
@@ -218,9 +314,9 @@ $("orders").onclick = async e => {
 async function loadFeed() {
   let logs = [];
   try {
-    const n = Number(await gram.sentBlockCount());
-    const blocks = await Promise.all(Array.from({ length: Math.min(n, 25) }, (_, i) => gram.sentBlocks(n - 1 - i)));
-    const perBlock = await Promise.all(blocks.map(b => gram.queryFilter(gram.filters.Sent(), Number(b), Number(b))));
+    const n = Number(await osmo.sentBlockCount());
+    const blocks = await Promise.all(Array.from({ length: Math.min(n, 25) }, (_, i) => osmo.sentBlocks(n - 1 - i)));
+    const perBlock = await Promise.all(blocks.map(b => osmo.queryFilter(osmo.filters.Sent(), Number(b), Number(b))));
     logs = perBlock.flatMap(ls => ls.reverse());
   } catch (e) { $("feed").textContent = "feed unavailable: " + (e.shortMessage || e.message); return; }
   if (!logs.length) return void ($("feed").textContent = "nothing yet");
@@ -230,7 +326,7 @@ async function loadFeed() {
     const dec = native ? 18 : shareMeta.decimals;
     return `<div class="item"><div class="memo">${esc(l.args.memo) || "(no note)"}</div>`
       + `<div class="meta"><span class="amt">${ethers.formatUnits(l.args.value, dec)} ${unit}</span>`
-      + ` to ${esc(l.args.name)}${l.args.byAgent ? " &middot; by agent" : ""}</div></div>`;
+      + ` to ${esc(l.args.name) || "someone new, by link"}${l.args.byAgent ? " &middot; by agent" : ""}</div></div>`;
   }).join("");
 }
 
@@ -255,22 +351,22 @@ $("send").onclick = async () => {
   // Nothing can pull the native balance, so a standing order is a token order.
   if (every && $("asset").value === "native") return say("a standing order needs the share, not " + cfg.symbol, true);
   try {
-    say(every ? "writing the order" : $("verb").value + "ing it over");
+    say(every ? "writing the order" : "sending it over");
     let tx;
     if ($("asset").value === "native") {
-      tx = await gram.sendNative(to, memo, { value: ethers.parseEther(amount) });
+      tx = await osmo.sendNative(to, memo, { value: ethers.parseEther(amount) });
     } else {
       const value = ethers.parseUnits(amount, shareMeta.decimals);
-      if (await share.allowance(wallet.address, cfg.gram) < value) {
+      if (await share.allowance(wallet.address, cfg.osmo) < value) {
         say("approving once");
-        await (await share.approve(cfg.gram, MAX)).wait();
+        await (await share.approve(cfg.osmo, MAX)).wait();
       }
       // firstAt 0 means due at once: the first payment goes out on the first Run.
-      tx = every ? await gram.createOrder(cfg.share, to, value, 0, every, memo)
-                 : await gram.sendToken(cfg.share, to, value, memo);
+      tx = every ? await osmo.createOrder(cfg.share, to, value, 0, every, memo)
+                 : await osmo.sendToken(cfg.share, to, value, memo);
     }
     const r = await tx.wait();
-    say(`${every ? "order written, press Run to pay it" : $("verb").value + " landed"}. ${cfg.explorer}/tx/${r.hash}`);
+    say(`${every ? "order written, press Run to pay it" : "landed"}. ${cfg.explorer}/tx/${r.hash}`);
     $("amount").value = ""; $("memo").value = "";
     refresh();
   } catch (e) { say(e.shortMessage || e.message, true); }
@@ -279,8 +375,7 @@ $("send").onclick = async () => {
 $("chain").innerHTML = Object.entries(CHAINS).map(([k, c]) => `<option value="${k}">${c.name}</option>`).join("");
 $("account").innerHTML = Object.keys(DEMO_KEYS).map(k => `<option value="${k}">as ${k}</option>`).join("");
 $("chain").onchange = $("account").onchange = connect;
-// The word is how the send feels, not what it does: all five make the same call.
-$("verb").onchange = () => $("send").textContent = $("verb").value + " it";
+window.onhashchange = loadClaim;
 connect().catch(e => say(e.message, true));
 </script>
 </body>

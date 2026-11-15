@@ -1,7 +1,10 @@
-# stablegram
+# Osmo
+
+*Named for osmosis: value that slips through the walls between people,
+apps and borders.*
 
 **Send someone a fraction of a share, or some MON, by name. Say what it was
-for. Or write it once and let anyone press the button when it is due.**
+for. Or send it as a link to someone who has no wallet yet.**
 
 Built for Monad Blitz Oregon, 2026-11-15. Live on Monad testnet.
 
@@ -16,7 +19,7 @@ Sending a friend a little stock is still a walled garden.
 - Tokenized stocks move freely on-chain, and then there is no name, no note
   and no feed. You paste an address and hope.
 
-stablegram is the missing layer: a name instead of an address, a note
+Osmo is the missing layer: a name instead of an address, a note
 instead of a bare transfer, and an agent that can act for you only inside
 limits the contract enforces.
 
@@ -33,6 +36,10 @@ limits the contract enforces.
 5. **Or write it once.** `createOrder(share, "alice", 0.25e18, firstAt,
    7 days, "weekly quarter share")` is a standing order. Anyone may trigger
    it when it falls due, and whoever does chooses nothing.
+6. **Or send a link.** `createLink(share, 0.25e18, key, "welcome")` puts
+   the value behind a link that carries a fresh private key. Whoever opens
+   the link claims it to any wallet, even one made a second ago, and until
+   then the sender can take it back.
 
 Every send emits the same `Sent` event with the note attached.
 
@@ -44,7 +51,7 @@ it cannot be read by scanning the event log: the public RPC answers
 on testnet (10,000 blocks, 2026-11-15), so that is about half a minute of
 chain.
 
-So `Stablegram` keeps one array, `sentBlocks`: every block that holds at
+So `Osmo` keeps one array, `sentBlocks`: every block that holds at
 least one send. The client reads the last 25 entries and asks for exactly
 those blocks. The app ships with no indexer, no backend and no API key.
 
@@ -65,8 +72,10 @@ feed from a Stream on `Sent`.
 send confirms about as fast as a text delivers. Each one below cost between
 0.005 and 0.02 MON.
 
-**Gas is MON.** A recipient who wants to send onward needs MON first. The
-demo accounts are pre-funded for that reason.
+**Gas is MON, and a claim link removes the first wall.** Anyone may submit
+a claim, so a newcomer with an empty wallet can be paid for by the sender
+or a relayer. Sending onward still needs MON, so the demo accounts are
+pre-funded.
 
 ## Contracts
 
@@ -74,11 +83,12 @@ demo accounts are pre-funded for that reason.
 | --- | --- |
 | `MockShare` | Stand-in for a tokenized stock on testnet |
 | `UsernameRegistry` | One name per address, case-insensitive, reverts on an unclaimed name |
-| `Stablegram` | Send any token or MON by name, with a note, as yourself, as someone's agent, or by standing order |
+| `Osmo` | Send any token or MON by name, with a note, as yourself, as someone's agent, by standing order, or as a claim link |
 
-`Stablegram` holds no balance and has no owner. It moves value in the same
-transaction it receives the instruction, and it sends the token you
-already hold: no wrapper, no allowlist.
+`Osmo` has no owner and sends the token you already hold: no
+wrapper, no allowlist. The only value it ever holds is unclaimed links,
+each owed to its link holder or back to its sender. Every other send moves
+value in the same transaction it receives the instruction.
 
 ## Agent safety limits
 
@@ -106,13 +116,27 @@ The limits are in the contract, not in the prompt.
 
 Orders are for tokens only. The interval is a fixed number of seconds.
 
+## Claim links
+
+| Rule | Enforced by |
+| --- | --- |
+| The link's secret is a fresh key, and only its address goes on chain | `createLink` stores `key`; the private half lives in the URL fragment, which browsers never send to a server |
+| A claim names its recipient, so one seen in flight cannot be redirected | The key signs `claimDigest(id, to)`; any other `to` reverts with `BadClaimSignature` |
+| Anyone may submit the claim, so the recipient needs no gas | `claimLink` checks the signature, not the caller |
+| One claim per link | The link is zeroed before paying; a second claim reverts with `NoSuchLink` |
+| The sender can take back an unclaimed link at any time | `reclaimLink`, sender only (`NotYourLink`) |
+
+Whoever holds the link can claim it, so it should be shared like cash:
+only with the person it is for.
+
 ## Deployed addresses
 
-Monad testnet, chain ID 10143, deployed 2026-11-15 from block 80017489.
+Monad testnet, chain ID 10143. The registry and the share were deployed
+on 2026-11-15 from block 80017489, and `Osmo` in block 80023566.
 
 | Contract | Address |
 | --- | --- |
-| `Stablegram` | `0x535115B527C6c51c6Bf73B72579308b0ACe69847` |
+| `Osmo` | `0xC2f251c89Fac09830dadAb1Fc67Da885F01Bb45e` |
 | `UsernameRegistry` | `0xC90654Fe34e37dd30F54f980407F1973F7959EE3` |
 | `MockShare` | `0xc8045312f9739E980A6f8208Ea25aF2FDA2558EA` |
 
@@ -127,15 +151,21 @@ and after, at about 103 gwei.
 | What | Transaction | Cost in MON |
 | --- | --- | --- |
 | Claim a name | `0x0802473f080aee7fcc4fcb4375396843bf880dc6084dfb3853b10297120a511b` | 0.0087 |
-| Send a quarter share with a note | `0xa03b9f040fd0f04b5173851bacdd69a1b428682ac13a52af8883567bfe7fe93e` | 0.0145 |
-| Send 0.01 MON with a note | `0x7ff162c0a4d1f3ac8843377afb37b130b4b4ae1ffb6586e60c0e06b498c0ba54` | 0.0083 |
-| Write a weekly order | `0x5adbc7d7362924596454e3fd13428141bfd1e1971ae032773a8545d3b8f3bf76` | 0.0201 |
-| Run it | `0xf1f7f26a2b61ad00214fd72fb20f92e1fd79f0128104e73a17d483a0f368e8b9` | 0.0099 |
-| Cancel it | `0x7bae3f2db41d2561b0155f33e47e2b11cce5020c86bb583f4303aeab886b1e79` | 0.0046 |
+| Send a quarter share with a note | `0x4aaed55e7c77bd9f2bf0386b134edcbf3a2f27351f6d4887d53a22f6e163a9ad` | 0.0148 |
+| Send 0.01 MON with a note, to itself | `0x2ca04d9b9423c3d1b0b1469c3f8864008f4d89808af111142f1ef4b3bfdf24a6` | 0.0083 |
+| Write a weekly order | `0x73cf9155d9354fa3080243ad2b4da4696f3579b1305f42e24393c50a7f835d38` | 0.0214 |
+| Run it | `0xbbffb56be2fce5c075d6025455bd55bbd3af76f900f3bf6921939773b19c97bc` | 0.0101 |
+| Cancel it | `0x1d99ef937efd2a957ef300d80a31a1613d54a37de87feaf172a20ea6357b4f3e` | 0.0051 |
+| Put a quarter share behind a link | `0x4b454c8662885e6be80f10eb13be9a54487a623e57a85529ae72a0e34fd4f520` | 0.0269 |
+| Claim it to `bob`, gas paid by the deployer | `0xc3734e30044bcf03da842f075f7c9da7084451e9a9871b5d849ebc4b263a5e3b` | 0.0147 |
+| Put 0.01 MON behind a link | `0x2edf00957976b5581f25080446904be7c9579ae563d351f4631373e6bfd8a266` | 0.0123 plus the 0.01 |
+| Take it back | `0x9cd702166a1332214bd585948fec3b01f76f400fb65b917f90a5dd5dcaa3a06e` | 0.0054 |
 
 A second run in the same period reverted with `NotDue`, and a run after
-the cancel reverted with `NoSuchOrder`. `sentBlocks` then held the three
-blocks of the three sends, and the demo client's feed listed all three.
+the cancel reverted with `NoSuchOrder`. Submitting the link's signature
+for `bob` with a different recipient reverted with `BadClaimSignature`.
+Bob's share balance rose by exactly 0.25, and the contract held nothing
+afterwards. `sentBlocks` holds the four blocks of the four sends.
 
 ## Run it
 
@@ -168,10 +198,6 @@ framework.
 cd demo && python3 -m http.server 8000
 ```
 
-The sender picks the word on the send button: Kula, Nomad, Lixi, Volo or
-Osmo. The word is the voice of the send, not a different transaction; all
-five make the same call.
-
 It carries two throwaway testnet accounts instead of a wallet connector,
 because mobile wallet deep linking is what breaks live demos. Pick "as
 alice" or "as bob" and send. Those keys live in `demo/demo-keys.js`, which
@@ -190,6 +216,7 @@ window.DEMO_KEYS = { alice: "0x...", bob: "0x..." };
 | Agent caps and standing orders | Enforced on-chain, not mocked | The same |
 | The agent itself | Not built: nothing parses a text or triggers a due order yet, a person presses Run | An off-chain agent that reads messages and runs due orders |
 | Feed | Read from `sentBlocks` and the event log | A Stream on `Sent` into a store |
+| Claim link gas | The claimant's own account pays in the demo | A relayer submits the claim, so a newcomer needs no MON |
 
 The honest limit: this moves a tokenized claim, not the registered share.
 Whether the holder is a shareholder of record is the issuer's and the

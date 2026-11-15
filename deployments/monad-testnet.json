@@ -8,9 +8,9 @@
   "deployBlock": 80017489,
   "deployer": "0xA87D1A929a93FbC809391F5FF53aaB9bdA54EB46",
   "contracts": {
-    "Stablegram": {
-      "address": "0x535115B527C6c51c6Bf73B72579308b0ACe69847",
-      "deployBlock": 80017504,
+    "Osmo": {
+      "address": "0xC2f251c89Fac09830dadAb1Fc67Da885F01Bb45e",
+      "deployBlock": 80023566,
       "abi": [
         {
           "type": "constructor",
@@ -80,6 +80,87 @@
           ],
           "outputs": [],
           "stateMutability": "nonpayable"
+        },
+        {
+          "type": "function",
+          "name": "claimDigest",
+          "inputs": [
+            {
+              "name": "id",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "to",
+              "type": "address",
+              "internalType": "address"
+            }
+          ],
+          "outputs": [
+            {
+              "name": "",
+              "type": "bytes32",
+              "internalType": "bytes32"
+            }
+          ],
+          "stateMutability": "view"
+        },
+        {
+          "type": "function",
+          "name": "claimLink",
+          "inputs": [
+            {
+              "name": "id",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "to",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "sig",
+              "type": "bytes",
+              "internalType": "bytes"
+            }
+          ],
+          "outputs": [],
+          "stateMutability": "nonpayable"
+        },
+        {
+          "type": "function",
+          "name": "createLink",
+          "inputs": [
+            {
+              "name": "token",
+              "type": "address",
+              "internalType": "contract IERC20"
+            },
+            {
+              "name": "value",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "key",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "memo",
+              "type": "string",
+              "internalType": "string"
+            }
+          ],
+          "outputs": [
+            {
+              "name": "id",
+              "type": "uint256",
+              "internalType": "uint256"
+            }
+          ],
+          "stateMutability": "payable"
         },
         {
           "type": "function",
@@ -156,6 +237,58 @@
         },
         {
           "type": "function",
+          "name": "linkCount",
+          "inputs": [],
+          "outputs": [
+            {
+              "name": "",
+              "type": "uint256",
+              "internalType": "uint256"
+            }
+          ],
+          "stateMutability": "view"
+        },
+        {
+          "type": "function",
+          "name": "links",
+          "inputs": [
+            {
+              "name": "",
+              "type": "uint256",
+              "internalType": "uint256"
+            }
+          ],
+          "outputs": [
+            {
+              "name": "from",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "key",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "token",
+              "type": "address",
+              "internalType": "contract IERC20"
+            },
+            {
+              "name": "value",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "memo",
+              "type": "string",
+              "internalType": "string"
+            }
+          ],
+          "stateMutability": "view"
+        },
+        {
+          "type": "function",
           "name": "orderCount",
           "inputs": [],
           "outputs": [
@@ -220,6 +353,19 @@
             }
           ],
           "stateMutability": "view"
+        },
+        {
+          "type": "function",
+          "name": "reclaimLink",
+          "inputs": [
+            {
+              "name": "id",
+              "type": "uint256",
+              "internalType": "uint256"
+            }
+          ],
+          "outputs": [],
+          "stateMutability": "nonpayable"
         },
         {
           "type": "function",
@@ -510,6 +656,56 @@
         },
         {
           "type": "event",
+          "name": "LinkClosed",
+          "inputs": [
+            {
+              "name": "id",
+              "type": "uint256",
+              "indexed": true,
+              "internalType": "uint256"
+            },
+            {
+              "name": "to",
+              "type": "address",
+              "indexed": true,
+              "internalType": "address"
+            }
+          ],
+          "anonymous": false
+        },
+        {
+          "type": "event",
+          "name": "LinkCreated",
+          "inputs": [
+            {
+              "name": "id",
+              "type": "uint256",
+              "indexed": true,
+              "internalType": "uint256"
+            },
+            {
+              "name": "from",
+              "type": "address",
+              "indexed": true,
+              "internalType": "address"
+            },
+            {
+              "name": "token",
+              "type": "address",
+              "indexed": false,
+              "internalType": "address"
+            },
+            {
+              "name": "value",
+              "type": "uint256",
+              "indexed": false,
+              "internalType": "uint256"
+            }
+          ],
+          "anonymous": false
+        },
+        {
+          "type": "event",
           "name": "OrderCancelled",
           "inputs": [
             {
@@ -609,8 +805,45 @@
         },
         {
           "type": "error",
+          "name": "BadClaimSignature",
+          "inputs": []
+        },
+        {
+          "type": "error",
           "name": "BadInterval",
           "inputs": []
+        },
+        {
+          "type": "error",
+          "name": "BadLink",
+          "inputs": []
+        },
+        {
+          "type": "error",
+          "name": "ECDSAInvalidSignature",
+          "inputs": []
+        },
+        {
+          "type": "error",
+          "name": "ECDSAInvalidSignatureLength",
+          "inputs": [
+            {
+              "name": "length",
+              "type": "uint256",
+              "internalType": "uint256"
+            }
+          ]
+        },
+        {
+          "type": "error",
+          "name": "ECDSAInvalidSignatureS",
+          "inputs": [
+            {
+              "name": "s",
+              "type": "bytes32",
+              "internalType": "bytes32"
+            }
+          ]
         },
         {
           "type": "error",
@@ -620,6 +853,11 @@
         {
           "type": "error",
           "name": "NativeSendFailed",
+          "inputs": []
+        },
+        {
+          "type": "error",
+          "name": "NoSuchLink",
           "inputs": []
         },
         {
@@ -642,6 +880,11 @@
               "internalType": "uint256"
             }
           ]
+        },
+        {
+          "type": "error",
+          "name": "NotYourLink",
+          "inputs": []
         },
         {
           "type": "error",

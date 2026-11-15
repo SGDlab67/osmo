@@ -3,6 +3,8 @@ pragma solidity ^0.8.28;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
+import {MessageHashUtils} from "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
 
 import {UsernameRegistry} from "./UsernameRegistry.sol";
 
@@ -19,17 +21,20 @@ import {UsernameRegistry} from "./UsernameRegistry.sol";
 ///      trigger when it falls due. Whoever triggers it chooses nothing.
 ///   5. Remember which blocks hold a send, so a client can build the feed
 ///      without an indexer and without scanning the chain.
+///   6. Hold claim links: value sent to someone who has no name or wallet
+///      yet, claimable by whoever holds the link.
 ///
-/// This contract holds no balance and has no owner. It moves value in the
-/// same transaction it receives the instruction, so there is nothing here
-/// to drain. Any rule the token itself enforces, such as a pause or a
+/// This contract has no owner. The only value it ever holds is unclaimed
+/// links, each one owed to its link holder or back to its sender. Every
+/// other send moves value in the same transaction it receives the
+/// instruction. Any rule the token itself enforces, such as a pause or a
 /// transfer restriction, still applies because this calls the token's
 /// ordinary transfer path.
 ///
 /// On Monad the chain's currency is MON, so sendNative sends MON. An agent
 /// cannot send the native balance, because nothing can pull it from a
 /// user's account; an agent sends tokens.
-contract Stablegram {
+contract Osmo {
     using SafeERC20 for IERC20;
 
     uint256 public constant MAX_MEMO_BYTES = 140;
@@ -71,6 +76,19 @@ contract Stablegram {
     // volume, drop this and build the feed from a Stream on Sent.
     uint64[] public sentBlocks;
 
+    /// A send waiting for whoever holds the link. The link carries a fresh
+    /// private key; only its address is stored here. `token` is address(0)
+    /// for the native currency. A closed link is zeroed in place.
+    struct Link {
+        address from;
+        address key;
+        IERC20 token;
+        uint256 value;
+        string memo;
+    }
+
+    Link[] public links;
+
     /// user => the one address allowed to send on their behalf
     mapping(address => address) public agentOf;
     /// user => token => how much that agent may move
@@ -93,6 +111,8 @@ contract Stablegram {
     event LimitSet(address indexed user, address indexed token, uint128 perSend, uint128 perDay);
     event OrderCreated(uint256 indexed id, address indexed from, address indexed to, uint48 firstAt, uint48 every);
     event OrderCancelled(uint256 indexed id);
+    event LinkCreated(uint256 indexed id, address indexed from, address token, uint256 value);
+    event LinkClosed(uint256 indexed id, address indexed to);
 
     error NothingToSend();
     error NativeSendFailed();
@@ -104,6 +124,10 @@ contract Stablegram {
     error NotYourOrder();
     error NoSuchOrder();
     error NotDue(uint256 nextAt);
+    error BadLink();
+    error NoSuchLink();
+    error NotYourLink();
+    error BadClaimSignature();
 
     constructor(UsernameRegistry usernames_) {
         usernames = usernames_;
@@ -233,7 +257,57 @@ contract Stablegram {
         emit Sent(address(o.token), o.from, to, o.name, o.value, o.memo, true);
     }
 
+    // --- claim links ---
+
+    /// Put `value` of `token` (address(0) for the native currency, sent as
+    /// msg.value) behind a link. `key` is the address of a fresh key whose
+    /// private half goes in the link and nowhere else.
+    function createLink(IERC20 token, uint256 value, address key, string calldata memo)
+        external
+        payable
+        returns (uint256 id)
+    {
+        if (value == 0) revert NothingToSend();
+        if (bytes(memo).length > MAX_MEMO_BYTES) revert MemoTooLong();
+        if (key == address(0) || msg.value != (address(token) == address(0) ? value : 0)) revert BadLink();
+        if (address(token) != address(0)) token.safeTransferFrom(msg.sender, address(this), value);
+        id = links.length;
+        links.push(Link({from: msg.sender, key: key, token: token, value: value, memo: memo}));
+        emit LinkCreated(id, msg.sender, address(token), value);
+    }
+
+    /// What the link key signs to claim link `id` for `to`. Binding `to`
+    /// means a claim seen in flight cannot be redirected, and anyone may
+    /// submit it, so the recipient needs no gas of their own.
+    function claimDigest(uint256 id, address to) public view returns (bytes32) {
+        return MessageHashUtils.toEthSignedMessageHash(keccak256(abi.encode(address(this), block.chainid, id, to)));
+    }
+
+    /// Pay link `id` to `to`, given the link key's signature over claimDigest.
+    function claimLink(uint256 id, address to, bytes calldata sig) external inFeed {
+        Link memory l = links[id];
+        if (l.from == address(0)) revert NoSuchLink();
+        if (to == address(0) || ECDSA.recover(claimDigest(id, to), sig) != l.key) revert BadClaimSignature();
+        delete links[id];
+        _payOut(l, to);
+        emit Sent(address(l.token), l.from, to, usernames.nameOf(to), l.value, l.memo, false);
+        emit LinkClosed(id, to);
+    }
+
+    /// Take back a link nobody has claimed yet. Only its sender.
+    function reclaimLink(uint256 id) external {
+        Link memory l = links[id];
+        if (l.from != msg.sender) revert NotYourLink();
+        delete links[id];
+        _payOut(l, msg.sender);
+        emit LinkClosed(id, msg.sender);
+    }
+
     // --- views ---
+
+    function linkCount() external view returns (uint256) {
+        return links.length;
+    }
 
     function orderCount() external view returns (uint256) {
         return orders.length;
@@ -252,6 +326,15 @@ contract Stablegram {
     }
 
     // --- internals ---
+
+    function _payOut(Link memory l, address to) private {
+        if (address(l.token) == address(0)) {
+            (bool ok,) = payable(to).call{value: l.value}("");
+            if (!ok) revert NativeSendFailed();
+        } else {
+            l.token.safeTransfer(to, l.value);
+        }
+    }
 
     function _resolve(string calldata name, uint256 value, string calldata memo) private view returns (address to) {
         if (value == 0) revert NothingToSend();
