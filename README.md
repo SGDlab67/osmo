@@ -2,7 +2,7 @@
 
 ## Steps to prepare your project repo:
 
-1. Visit the `monad-blitz-oregon` repo (link [here](https://github.com/monad-developers/monad-blitz-devcon-mumbai)) and fork it.
+1. Visit the `monad-blitz-oregon` repo (link [here](https://github.com/monad-developers/monad-blitz-oregon)) and fork it.
 
 ![1.png](./screenshots/1.png)
 
