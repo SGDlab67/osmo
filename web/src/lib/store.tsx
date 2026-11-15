@@ -4,7 +4,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import type { PrivateKeyAccount } from "viem/accounts";
 import { registryAbi, osmoAbi, welcomeAbi } from "./abi";
 import { META, MON_GAS_RESERVE, balancesOf, toRaw, unitsFor, type Token } from "./assets";
-import { createWallet, forgetWallet, loadWallet, saveName } from "./burner";
+import { createWallet, forgetWallet, loadWallet, restoreWallet, saveName, savedKey } from "./burner";
 import { publicClient, sendAndConfirm, type Sent } from "./chain";
 import { config } from "./config";
 import { PRIVATE_MARK, type Payment } from "./feed";
@@ -70,6 +70,10 @@ interface Store {
   buy: (symbol: string, usd: number) => Promise<{ units: number; hash: string; ms: number }>;
   saveProfile: (name: string, picture: string, country: string) => Promise<void>;
   signOut: () => void;
+  /** Log in on this phone with a username and a number from 1 to 9999. Throws a readable message on failure. */
+  signIn: (handle: string, pin: string) => Promise<void>;
+  /** Lock this phone's wallet behind a number, so the username and number work on any phone. */
+  setPin: (handle: string, pin: string) => Promise<void>;
   balancesFor: (address: `0x${string}`) => Promise<Record<string, number>>;
   /** Friends, reactions and "hide amounts" are kept on this phone; payments, profiles and requests are on Monad. */
   friends: string[];
@@ -335,6 +339,23 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     [account],
   );
 
+  const signIn = useCallback(async (user: string, pin: string) => {
+    const res = await fetch("/api/auth/login", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ handle: user.trim().replace(/^@/, ""), pin }) });
+    const body = (await res.json().catch(() => ({}))) as { key?: `0x${string}`; handle?: string; error?: string };
+    if (!res.ok || !body.key || !body.handle) throw new Error(body.error ?? "Couldn't log in. Try again.");
+    const acct = restoreWallet(body.key);
+    saveName(body.handle);
+    setAccount(acct);
+    setHandle(body.handle);
+  }, []);
+
+  const setPin = useCallback(async (user: string, pin: string) => {
+    const key = savedKey();
+    if (!key) throw new Error("No wallet on this phone.");
+    const res = await fetch("/api/auth/pin", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ handle: user, key, pin }) });
+    if (!res.ok) throw new Error(((await res.json().catch(() => ({}))) as { error?: string }).error ?? "Couldn't save the number.");
+  }, []);
+
   const signOut = useCallback(() => {
     forgetWallet();
     setAccount(null);
@@ -382,7 +403,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   const value: Store = {
     ready, status, account, me, tokens, balances, prices, people, feed, requests, block, totalUsd, cashUsd,
-    charities, charityOf, personOf, canSee, spendable, join, pay, request, closeRequest, buy, saveProfile, signOut, balancesFor,
+    charities, charityOf, personOf, canSee, spendable, join, pay, request, closeRequest, buy, saveProfile, signOut, signIn, setPin, balancesFor,
     friends, addFriend, removeFriend, reactions: local.reactions, react, hideBalances: local.hide, toggleHideBalances, arrivals, dismissArrival,
   };
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

@@ -2,24 +2,37 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Check, ChevronRight } from "lucide-react";
 import { COUNTRIES, countryName, flagOf } from "@/lib/countries";
 import { addressUrl } from "@/lib/chain";
 import { useRequireAccount } from "@/lib/hooks";
 import { useStore } from "@/lib/store";
 import { BackHeader, Screen } from "@/components/shell";
+import { PinField, pinOk } from "@/components/pin-field";
 import { Card, Picture, PicturePicker, PrimaryButton, SectionTitle, Sheet } from "@/components/ui";
 
 export default function SettingsPage() {
   const ok = useRequireAccount();
   const router = useRouter();
-  const { me, account, saveProfile, signOut, hideBalances, toggleHideBalances } = useStore();
+  const { me, account, saveProfile, signOut, setPin, hideBalances, toggleHideBalances } = useStore();
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState("");
   const [picture, setPicture] = useState("");
   const [country, setCountry] = useState("");
   const [saving, setSaving] = useState(false);
+  const [login, setLogin] = useState<{ ready: boolean; set: boolean } | null>(null);
+  const [numberOpen, setNumberOpen] = useState(false);
+  const [number, setNumber] = useState("");
+  const [numberError, setNumberError] = useState("");
+  const myHandle = me?.handle;
+  useEffect(() => {
+    if (!myHandle) return;
+    fetch(`/api/auth/pin?handle=${myHandle}`, { cache: "no-store" })
+      .then((r) => r.json())
+      .then((j: { ready?: boolean; set?: boolean }) => setLogin({ ready: Boolean(j.ready), set: Boolean(j.set) }))
+      .catch(() => {});
+  }, [myHandle]);
   if (!ok || !me || !account) return null;
   const open = () => {
     setName(me.name);
@@ -54,6 +67,21 @@ export default function SettingsPage() {
         </Card>
         <p className="px-3 pt-2 text-[12px] leading-relaxed text-muted">Private payments are hidden in the app. Your wallet and its payments are still public on Monad, like any blockchain.</p>
 
+        {login?.ready && (
+          <>
+            <SectionTitle>Login</SectionTitle>
+            <Card className="!py-1">
+              <button type="button" onClick={() => { setNumber(""); setNumberError(""); setNumberOpen(true); }} className={row}>
+                <span>
+                  Login number
+                  <span className="block text-[13px] font-normal text-muted">{login.set ? "Set. Log in on any phone with @" + me.handle : "Not set. Without it, signing out loses this wallet."}</span>
+                </span>
+                <span className="text-[14px] text-brand">{login.set ? "Change" : "Set"}</span>
+              </button>
+            </Card>
+          </>
+        )}
+
         <SectionTitle>Wallet</SectionTitle>
         <Card className="divide-y divide-line !py-1">
           <a href={addressUrl(account.address)} target="_blank" rel="noreferrer" className={row}>
@@ -78,7 +106,7 @@ export default function SettingsPage() {
         <button
           type="button"
           onClick={() => {
-            if (confirm("Sign out? The test assets on this phone can't be recovered.")) {
+            if (confirm(login?.set ? `Sign out? You can log back in with @${me.handle} and your number.` : "Sign out? The test assets on this phone can't be recovered.")) {
               signOut();
               router.replace("/welcome");
             }
@@ -88,6 +116,30 @@ export default function SettingsPage() {
           Sign out
         </button>
       </div>
+
+      <Sheet open={numberOpen} onClose={() => setNumberOpen(false)} title={login?.set ? "Change your number" : "Set a login number"}>
+        <PinField value={number} onChange={setNumber} label="A number from 1 to 9999" autoComplete="new-password" />
+        {numberError && <p className="mt-2 text-[14px] text-down">{numberError}</p>}
+        <PrimaryButton
+          className="mt-4"
+          disabled={saving || !pinOk(number)}
+          onClick={async () => {
+            setSaving(true);
+            setNumberError("");
+            try {
+              await setPin(me.handle, number);
+              setLogin((l) => (l ? { ...l, set: true } : l));
+              setNumberOpen(false);
+            } catch (e) {
+              setNumberError(e instanceof Error ? e.message : "Couldn't save the number.");
+            } finally {
+              setSaving(false);
+            }
+          }}
+        >
+          {saving ? "Saving…" : "Save number"}
+        </PrimaryButton>
+      </Sheet>
 
       <Sheet open={editing} onClose={() => setEditing(false)} title="Edit profile">
         <PicturePicker value={picture} onPick={setPicture} />

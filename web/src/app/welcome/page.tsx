@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { Camera, Check, ChevronLeft, ChevronRight, Search } from "lucide-react";
@@ -9,6 +10,7 @@ import { config } from "@/lib/config";
 import { COUNTRIES, countryName, flagOf } from "@/lib/countries";
 import { defaultPicture } from "@/lib/people";
 import { useStore } from "@/lib/store";
+import { PinField, pinOk } from "@/components/pin-field";
 import { Mark, Picture, PicturePicker, PrimaryButton, Sheet } from "@/components/ui";
 
 const RULE = /^[a-z0-9_]{3,20}$/;
@@ -20,7 +22,7 @@ function suggestHandle(name: string) {
 
 export default function WelcomePage() {
   const router = useRouter();
-  const { ready, account, join, status } = useStore();
+  const { ready, account, join, setPin, status } = useStore();
   const [stage, setStage] = useState<"splash" | "profile" | "creating" | "done">("splash");
   const [name, setName] = useState("");
   const [handleTyped, setHandleTyped] = useState<string | null>(null);
@@ -33,16 +35,27 @@ export default function WelcomePage() {
   const [taken, setTaken] = useState<Record<string, boolean>>({});
   const [steps, setSteps] = useState<Step[]>([]);
   const [error, setError] = useState("");
+  const [pin, setPinValue] = useState("");
+  const [pinReady, setPinReady] = useState(false);
+  const [pinSaved, setPinSaved] = useState<boolean | null>(null);
 
   const handle = handleTyped ?? suggestHandle(name);
   const shownPicture = picture ?? defaultPicture(handle || "new");
-  const valid = RULE.test(handle) && name.trim().length > 0;
+  const valid = RULE.test(handle) && name.trim().length > 0 && (!pinReady || pinOk(pin));
   const isTaken = taken[handle];
 
   // Already signed in on this phone: go home.
   useEffect(() => {
     if (ready && account && stage === "splash") router.replace("/");
   }, [ready, account, stage, router]);
+
+  // Is login by number switched on for this server? If so, a number is part of signing up.
+  useEffect(() => {
+    fetch("/api/auth/pin", { cache: "no-store" })
+      .then((r) => r.json())
+      .then((j: { ready?: boolean }) => setPinReady(Boolean(j.ready)))
+      .catch(() => {});
+  }, []);
 
   // Check the username on-chain as it is typed.
   useEffect(() => {
@@ -69,6 +82,7 @@ export default function WelcomePage() {
     setSteps([{ label: "Wallet made on this phone" }, { label: "Starter kit and gas from Osmo" }, { label: `@${handle} claimed on Monad` }]);
     try {
       await join({ handle, name: name.trim(), picture: shownPicture, country }, (i, ms, hash) => setSteps((s) => s.map((x, j) => (j === i ? { ...x, ms, hash } : x))));
+      if (pinReady && pinOk(pin)) setPinSaved(await setPin(handle, pin).then(() => true, () => false));
       setTimeout(() => setStage("done"), 500);
     } catch (e) {
       setError(e instanceof Error ? e.message.split("\n")[0] : "Something went wrong");
@@ -87,6 +101,9 @@ export default function WelcomePage() {
         <button type="button" onClick={() => setStage("profile")} className="h-14 rounded-full bg-[#f3eee5] text-[17px] font-semibold text-splash">
           Create a wallet
         </button>
+        <Link href="/login" className="mt-3 flex h-12 items-center justify-center rounded-full border border-[#f3eee5]/40 text-[16px] font-semibold text-[#f3eee5]">
+          Log in
+        </Link>
         <p className="mt-4 text-center text-[12px] text-[#f3eee5]/50">No ID needed. Your money stays in your own wallet. Live on Monad testnet.</p>
       </div>
     );
@@ -105,6 +122,9 @@ export default function WelcomePage() {
             {doneAll ? `You're in, @${handle}` : "Setting you up"} {flagOf(country)}
           </p>
           <p className="mt-1 text-[15px] text-muted">{doneAll ? "$150 to send around: $50 USDC, $40 NVIDIA, $25 Tesla, $20 Bitcoin and $15 gold." : "Three steps on Monad"}</p>
+          {doneAll && pinSaved !== null && (
+            <p className="mt-3 text-[14px] text-muted">{pinSaved ? `On any phone, log in with @${handle} and your number.` : "Your number wasn't saved. Set it later in Settings."}</p>
+          )}
           <ol className="mt-8 w-full space-y-2 text-left">
             {steps.map((s) => (
               <li key={s.label} className="flex items-center gap-3 rounded-2xl bg-white px-4 py-3.5">
@@ -190,6 +210,12 @@ export default function WelcomePage() {
         </button>
         <p className="mt-1 px-1 text-[12px] text-muted">Shows as a flag by your name, so friends can tell you apart from look-alikes. Optional.</p>
       </div>
+      {pinReady && (
+        <div className="mt-4">
+          <PinField value={pin} onChange={setPinValue} label="Pick a number to log in with" autoComplete="new-password" />
+          <p className="mt-1 px-1 text-[12px] text-muted">Any number from 1 to 9999. With your username it logs you in on any phone. Five wrong tries lock it for 15 minutes.</p>
+        </div>
+      )}
       <label className="mt-4 flex items-start gap-3 rounded-2xl bg-white p-4">
         <input type="checkbox" checked={agreed} onChange={(e) => setAgreed(e.target.checked)} className="mt-0.5 h-5 w-5 shrink-0 accent-[#1f4f82]" />
         <span className="text-[13px] leading-snug text-muted">I understand payments are final, my wallet lives on this phone and is mine to protect, and this is a testnet demo with test tokens.</span>

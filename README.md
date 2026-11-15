@@ -173,6 +173,29 @@ Run it: deploy with `script/DeployCharities.s.sol` (see the header), then `cd we
 `CURATOR_KEY=0x... npm run seed:charities` (idempotent; funds each charity wallet just enough to claim its username, then
 lists all of them in one `addMany`).
 
+## Login by username and number
+
+A phone keeps its wallet in the browser, so signing out used to lose it. With login by number, a person picks
+a number from 1 to 9999 when they join and can then log in on any phone with their username and that number
+(`/login`, or Settings to add one later).
+
+How it is kept safe, and what it is not:
+
+- There are only 10,000 numbers, so they are checked only by the server, never derived into a key. The
+  wallet key is stored sealed (AES-256-GCM, key from scrypt over the server secret, the username and the
+  number). A wrong number fails the seal check. The stored blob alone opens nothing.
+- Every attempt takes a ticket from an atomic counter in Redis before it is checked: 5 per username and 40 per
+  network per 15 minutes. Parallel guesses cannot get past that.
+- The server secret is derived from `RELAYER_KEY`, so rotating that key invalidates every saved number.
+- Setting a number needs the wallet that owns the username on chain.
+- The honest limits: the server holds every sealed wallet key (custody), anyone can lock a known username
+  for 15 minutes by guessing, and someone who holds both the server secret and the store could try all
+  10,000 numbers. It is a convenience for a testnet demo with test tokens, not account security.
+
+It needs a Redis store: add Upstash Redis to the Vercel project (Storage, Marketplace), which sets
+`KV_REST_API_URL` and `KV_REST_API_TOKEN`. Without them the login screen says it is not switched on and
+sign-up works as before. `npm test` in `web/` runs the lockout and ownership tests.
+
 ## Deployed addresses
 
 Monad testnet, chain ID 10143. The whole app was deployed together on
