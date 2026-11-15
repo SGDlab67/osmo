@@ -1299,6 +1299,19 @@ export const welcomeAbi = [
   },
   {
     "type": "function",
+    "name": "maxMembers",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "memberCount",
     "inputs": [],
     "outputs": [
@@ -1481,6 +1494,19 @@ export const welcomeAbi = [
         "name": "amounts",
         "type": "uint96[]",
         "internalType": "uint96[]"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "setMaxMembers",
+    "inputs": [
+      {
+        "name": "n",
+        "type": "uint256",
+        "internalType": "uint256"
       }
     ],
     "outputs": [],
@@ -1764,6 +1790,11 @@ export const welcomeAbi = [
   {
     "type": "error",
     "name": "ProfileTooLong",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "RoomFull",
     "inputs": []
   },
   {

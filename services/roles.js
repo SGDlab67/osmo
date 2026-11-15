@@ -10,6 +10,12 @@ import { makeNotifier, ntfy } from "./notifier.js";
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
+/// Tokens the relayer will sponsor a claim for: the native currency and our own demo tokens. Reads both
+/// deployment file shapes: the first one (a MockShare entry) and the phone app's (assets by symbol and
+/// demoAccounts.share).
+export const sponsoredTokens = d =>
+  [ethers.ZeroAddress, d.contracts?.MockShare?.address, d.demoAccounts?.share, ...Object.values(d.assets ?? {})].filter(Boolean);
+
 /// Returns { stop(), port? }. Throws before doing anything if the chain or contract is wrong.
 export async function start(role, { provider, deployment, key, stateDir, ntfyBase = "https://ntfy.sh", port = 8787, pollMs, cfg = CFG, origins = ["http://localhost:8000", "http://127.0.0.1:8000"], logger = log }) {
   const address = deployment.contracts.Osmo.address;
@@ -49,7 +55,7 @@ export async function start(role, { provider, deployment, key, stateDir, ntfyBas
       globalPerMin: 30,
       // Native links and the demo share only: a hostile token can make a claim revert or burn gas,
       // so sponsoring is opt-in per token.
-      allowedTokens: [ethers.ZeroAddress, deployment.contracts.MockShare.address],
+      allowedTokens: sponsoredTokens(deployment),
       origins,
     };
     const server = serve({ claim: makeRelayer({ osmo: read, send, cfg: relayerCfg, log: logger }), cfg: relayerCfg });
@@ -70,7 +76,7 @@ export async function start(role, { provider, deployment, key, stateDir, ntfyBas
     const state = { next: loaded.next, recent: loaded.recent ?? [], save: () => writeAtomic(file, { next: state.next, recent: state.recent }) };
     const poll = makeNotifier({
       osmo: read, provider, registry: await read.usernames(), state,
-      publish: ntfy(ntfyBase), cfg, explorer: deployment.explorer, log: logger,
+      publish: ntfy(ntfyBase), cfg, explorer: deployment.explorer ?? "https://testnet.monadvision.com", log: logger,
     });
     logger("start", { role });
     const done = loop(pollMs ?? 1_000, poll);

@@ -7,7 +7,7 @@ import os from "node:os";
 import path from "node:path";
 import { test } from "node:test";
 import { CFG } from "../lib.js";
-import { start } from "../roles.js";
+import { sponsoredTokens, start } from "../roles.js";
 import { WEEK, world } from "./chain.js";
 
 const eth = ethers.parseEther;
@@ -83,4 +83,14 @@ test("a role refuses to start on the wrong chain", async t => {
   const w = await world();
   t.after(w.stop);
   await assert.rejects(boot(w, "keeper", { cfg: { ...CFG, chainId: 10143 } }), /expected 10143/);
+});
+
+test("the relayer allowlist reads both deployment file shapes", () => {
+  const a = "0x" + "a".repeat(40), b = "0x" + "b".repeat(40), c = "0x" + "c".repeat(40);
+  assert.deepEqual(sponsoredTokens({ contracts: { MockShare: { address: a } } }), [ethers.ZeroAddress, a]);
+  assert.deepEqual(
+    sponsoredTokens({ contracts: { Osmo: {} }, demoAccounts: { share: b }, assets: { NVDA: b, USDC: c } }),
+    [ethers.ZeroAddress, b, b, c],
+  );
+  assert.deepEqual(sponsoredTokens({ contracts: {} }), [ethers.ZeroAddress]);
 });
