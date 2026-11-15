@@ -3,6 +3,7 @@
 import { QRCodeSVG } from "qrcode.react";
 import type { ReactNode } from "react";
 import { useSyncExternalStore } from "react";
+import { ArrivalBanner } from "./arrival-banner";
 import { Mark } from "./ui";
 
 const noSub = () => () => {};
@@ -16,6 +17,7 @@ export function Frame({ children }: { children: ReactNode }) {
   return (
     <div className="stage">
       <div className="frame">
+        <ArrivalBanner />
         <div className="frame-scroll" id="scroller">
           {children}
         </div>

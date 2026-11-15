@@ -77,6 +77,9 @@ interface Store {
   react: (hash: string, emoji: string) => void;
   hideBalances: boolean;
   toggleHideBalances: () => void;
+  /** Payments to me that landed while the app was open, newest last, for the notification banner. */
+  arrivals: Payment[];
+  dismissArrival: (id: string) => void;
 }
 
 const LOCAL = "osmo.monad.local";
@@ -107,6 +110,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [requests, setRequests] = useState<MoneyRequest[]>([]);
   const [block, setBlock] = useState<bigint | null>(null);
   const seen = useRef({ sends: -1, members: -1, requests: -1 });
+  const [arrivals, setArrivals] = useState<Payment[]>([]);
+  // Payment ids already on screen when this account's feed first loaded, so only new ones notify.
+  const known = useRef<{ who: string; ids: Set<string> } | null>(null);
   const [local, setLocal] = useState<Local>({ friends: {}, reactions: {}, hide: false });
   const saveLocal = useCallback((f: (l: Local) => Local) => {
     setLocal((l) => {
@@ -189,16 +195,25 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           if (!alive) return;
           setFeed(items);
           if (bal) setBalances(bal);
+          if (handle) {
+            if (known.current?.who !== handle) known.current = { who: handle, ids: new Set(items.map((p) => p.id)) };
+            else {
+              const fresh = items.filter((p) => !known.current!.ids.has(p.id));
+              fresh.forEach((p) => known.current!.ids.add(p.id));
+              const mine = fresh.filter((p) => p.to === handle && p.from !== handle);
+              if (mine.length) setArrivals((a) => [...a, ...mine.reverse()].slice(-5));
+            }
+          }
         }
       } catch {}
     };
     tick();
-    const t = setInterval(tick, 1500);
+    const t = setInterval(tick, 1000);
     return () => {
       alive = false;
       clearInterval(t);
     };
-  }, [tokens, account, loadRequests]);
+  }, [tokens, account, handle, loadRequests]);
 
   const people = useMemo(() => {
     const joined = new Set(members.map((m) => m.handle));
@@ -338,6 +353,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       }),
     [handle, saveLocal],
   );
+  const dismissArrival = useCallback((id: string) => setArrivals((a) => a.filter((p) => p.id !== id)), []);
   const toggleHideBalances = useCallback(() => saveLocal((l) => ({ ...l, hide: !l.hide })), [saveLocal]);
 
   const balancesFor = useCallback((address: `0x${string}`) => balancesOf(address, tokens), [tokens]);
@@ -356,7 +372,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const value: Store = {
     ready, account, me, tokens, balances, prices, people, feed, requests, block, totalUsd, cashUsd,
     personOf, canSee, spendable, join, pay, request, closeRequest, buy, saveProfile, signOut, balancesFor,
-    friends, addFriend, removeFriend, reactions: local.reactions, react, hideBalances: local.hide, toggleHideBalances,
+    friends, addFriend, removeFriend, reactions: local.reactions, react, hideBalances: local.hide, toggleHideBalances, arrivals, dismissArrival,
   };
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
