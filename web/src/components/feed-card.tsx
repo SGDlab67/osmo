@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Lock, SmilePlus } from "lucide-react";
 import { useRef, useState } from "react";
 import { usd } from "@/lib/assets";
+import { CHARITY_RECORDS } from "@/lib/charities";
 import type { Payment } from "@/lib/feed";
 import { useNow } from "@/lib/hooks";
 import { useStore } from "@/lib/store";
@@ -12,15 +13,19 @@ import { AssetChip, Avatar, Card, ago } from "./ui";
 
 export const REACTIONS = ["❤️", "🔥", "😂", "🙏", "🎉"];
 
-/** "Sabina O." from "Sabina Okafor". */
+const ORG_NAMES = new Set(CHARITY_RECORDS.map((r) => r.name));
+
+/** "Sabina O." from "Sabina Okafor". Organizations keep their full name. */
 export function shortName(name: string) {
+  if (ORG_NAMES.has(name)) return name;
   const [first, ...rest] = name.trim().split(/\s+/);
   return rest.length ? `${first} ${rest[rest.length - 1][0]}.` : first;
 }
 
 export function Sentence({ p, size = "md" }: { p: Payment; size?: "md" | "sm" }) {
-  const { me, personOf, prices } = useStore();
+  const { me, personOf, prices, charityOf } = useStore();
   const mine = me && (p.from === me.handle || p.to === me.handle);
+  const gift = !!charityOf(p.to);
   const value = p.units * (prices[p.symbol]?.price ?? 0);
   const av = size === "md" ? 22 : 20;
   const name = (h: string, capital: boolean) =>
@@ -36,7 +41,7 @@ export function Sentence({ p, size = "md" }: { p: Payment; size?: "md" | "sm" })
     );
   return (
     <p className={`${size === "md" ? "text-[17px]" : "text-[15px]"} font-medium leading-snug tracking-tight text-muted`}>
-      {name(p.from, true)} paid {name(p.to, false)}
+      {name(p.from, true)} {gift ? "gave to" : "paid"} {name(p.to, false)}
       {mine && <span className="font-semibold text-ink"> {usd(value)}</span>}
       {p.note && (
         <>
@@ -93,7 +98,7 @@ export function ReactionRow({ p }: { p: Payment }) {
 }
 
 export function FeedCard({ p }: { p: Payment }) {
-  const { me, react, reactions, prices } = useStore();
+  const { me, react, reactions, prices, charityOf } = useStore();
   const router = useRouter();
   const now = useNow();
   const sent = p.from === me?.handle;
@@ -143,8 +148,11 @@ export function FeedCard({ p }: { p: Payment }) {
       <div className="mt-3 flex flex-wrap items-center gap-1.5">
         <AssetChip symbol={p.symbol} />
         {sent && (
-          <Link href={`/pay?to=${other}&amount=${Math.max(0.01, Math.round(value * 100) / 100)}&note=${encodeURIComponent(p.note)}`} className="inline-flex h-9 items-center rounded-full bg-ink px-4 text-[14px] font-semibold text-white">
-            Pay again
+          <Link
+            href={charityOf(other) ? `/give/${other}?give=1` : `/pay?to=${other}&amount=${Math.max(0.01, Math.round(value * 100) / 100)}&note=${encodeURIComponent(p.note)}`}
+            className="inline-flex h-9 items-center rounded-full bg-ink px-4 text-[14px] font-semibold text-white"
+          >
+            {charityOf(other) ? "Give again" : "Pay again"}
           </Link>
         )}
         {received && (

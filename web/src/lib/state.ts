@@ -1,4 +1,5 @@
 import type { Token } from "./assets";
+import type { Charity } from "./charities";
 import type { Payment } from "./feed";
 import type { Person } from "./people";
 
@@ -22,6 +23,8 @@ export interface WireState {
   feed: WirePayment[];
   members: Person[];
   requests: MoneyRequest[];
+  /** Nonprofits listed in Charities, with whether each record still matches its on-chain hash. Empty when not deployed. */
+  charities: Charity[];
   at: number;
 }
 

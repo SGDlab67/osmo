@@ -9,6 +9,7 @@ export const PIXELS = ["px1", "px2", "px3", "px4", "px5", "px6", "px7", "px8", "
 export function pictureUrl(id: string) {
   if (id.startsWith("px")) return `/pixel/${id}.png`;
   if (id.startsWith("person:")) return `/people/${id.slice(7)}.png`;
+  if (id.startsWith("charity:")) return `/charities/${id.slice(8)}.png`;
   return `/avatars/${id}.svg`;
 }
 

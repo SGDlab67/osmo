@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { ChartLine, ChevronLeft, House, QrCode, Search, Users } from "lucide-react";
+import { ChartLine, ChevronLeft, House, QrCode, Search, Users, HeartHandshake } from "lucide-react";
 import type { ReactNode } from "react";
 import { useStore } from "@/lib/store";
 import { Avatar, Mark } from "./ui";
@@ -67,7 +67,7 @@ export function TabBar() {
   );
 }
 
-export function SearchBar({ placeholder = "Find a person" }: { placeholder?: string }) {
+export function SearchBar({ placeholder = "Find a person", give = false }: { placeholder?: string; give?: boolean }) {
   return (
     <div className="sticky top-0 z-30 flex items-center gap-3 bg-page/95 px-4 pb-3 pt-4 backdrop-blur">
       <Link href="/pay" className="flex h-14 flex-1 items-center gap-3 rounded-full bg-white px-5 text-[17px] text-muted shadow-sm">
@@ -77,6 +77,11 @@ export function SearchBar({ placeholder = "Find a person" }: { placeholder?: str
       <Link href="/me/code" aria-label="My code" className="flex h-14 w-14 items-center justify-center rounded-full bg-white shadow-sm">
         <QrCode size={22} />
       </Link>
+      {give && (
+        <Link href="/give" aria-label="Give to a charity" className="flex h-14 w-14 items-center justify-center rounded-full bg-white text-[#D94B5C] shadow-sm">
+          <HeartHandshake size={23} />
+        </Link>
+      )}
     </div>
   );
 }

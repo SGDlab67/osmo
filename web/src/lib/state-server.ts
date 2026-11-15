@@ -1,4 +1,5 @@
-import { osmoAbi, registryAbi, welcomeAbi } from "./abi";
+import { charitiesAbi, osmoAbi, registryAbi, welcomeAbi } from "./abi";
+import { CHARITY_RECORDS, recordHash, type Charity } from "./charities";
 import { loadTokens, type Token } from "./assets";
 import { publicClient } from "./chain";
 import { config } from "./config";
@@ -12,6 +13,9 @@ let tokens: Token[] | null = null;
 let members: Person[] = [];
 let memberCount = -1;
 let membersAt = 0;
+let charities: Charity[] = [];
+let charityCount = -1;
+let charitiesAt = 0;
 let state: WireState | null = null;
 let builtAt = 0;
 let inflight: Promise<WireState> | null = null;
@@ -32,6 +36,30 @@ async function loadRequests(count: number): Promise<MoneyRequest[]> {
   }));
 }
 
+const ZERO = "0x0000000000000000000000000000000000000000";
+
+/** Every listed wallet, its username and on-chain status, matched to the record the app ships. O(n), n a few dozen. */
+async function loadCharities(count: number): Promise<Charity[]> {
+  const idx = Array.from({ length: count }, (_, i) => BigInt(i));
+  const wallets = await Promise.all(idx.map((i) => publicClient.readContract({ address: config.charities, abi: charitiesAbi, functionName: "list", args: [i] })));
+  const rows = await Promise.all(
+    wallets.map((w) =>
+      Promise.all([
+        publicClient.readContract({ address: config.charities, abi: charitiesAbi, functionName: "isVerified", args: [w] }),
+        publicClient.readContract({ address: config.charities, abi: charitiesAbi, functionName: "metaHashOf", args: [w] }),
+        publicClient.readContract({ address: config.registry, abi: registryAbi, functionName: "nameOf", args: [w] }),
+      ]),
+    ),
+  );
+  const out: Charity[] = [];
+  rows.forEach(([verified, metaHash, name], i) => {
+    const rec = CHARITY_RECORDS.find((r) => r.handle === name.toLowerCase());
+    if (!rec) return;
+    out.push({ ...rec, wallet: wallets[i], verified, detailsOk: recordHash(rec) === metaHash });
+  });
+  return out;
+}
+
 async function build(): Promise<WireState> {
   if (!tokens) tokens = await loadTokens();
   // One Multicall3 round trip for the four numbers that say whether anything changed.
@@ -41,6 +69,15 @@ async function build(): Promise<WireState> {
     publicClient.readContract({ address: config.welcome, abi: welcomeAbi, functionName: "memberCount" }).then(Number),
     publicClient.readContract({ address: config.welcome, abi: welcomeAbi, functionName: "requestCount" }).then(Number),
   ]);
+  // Charities change rarely: re-read the list when its length moves, or once a minute for revokes.
+  if (config.charities !== ZERO) {
+    const cc = Number(await publicClient.readContract({ address: config.charities, abi: charitiesAbi, functionName: "count" }));
+    if (cc !== charityCount || Date.now() - charitiesAt > 60_000) {
+      charities = await loadCharities(cc);
+      charityCount = cc;
+      charitiesAt = Date.now();
+    }
+  }
   // Profiles can change without the member count moving, so refresh them every 15 seconds too.
   const membersJob = mc !== memberCount || Date.now() - membersAt > 15_000 ? loadMembers() : Promise.resolve(members);
   const [feed, mem, requests] = await Promise.all([readFeed(tokens, sends), membersJob, loadRequests(rc)]);
@@ -56,6 +93,7 @@ async function build(): Promise<WireState> {
     feed: feed.map((p) => ({ ...p, block: p.block.toString() })),
     members,
     requests,
+    charities,
     at: Date.now(),
   };
 }

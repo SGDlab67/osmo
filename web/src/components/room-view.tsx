@@ -13,7 +13,7 @@ const NETWORK = config.chainId === 10143 ? "Monad testnet" : config.chainId === 
 
 /** A payment as the room sees it: names in the third person, the amount, the asset and the note. No buttons. */
 function RoomCard({ p, hero = false }: { p: Payment; hero?: boolean }) {
-  const { personOf, prices } = useStore();
+  const { personOf, prices, charityOf } = useStore();
   const now = useNow();
   const value = p.units * (prices[p.symbol]?.price ?? 0);
   return (
@@ -24,7 +24,7 @@ function RoomCard({ p, hero = false }: { p: Payment; hero?: boolean }) {
       </div>
       <div className="min-w-0 flex-1">
         <p className={`${hero ? "text-[30px]" : "text-[19px]"} font-medium leading-tight tracking-tight text-muted`}>
-          <span className="font-semibold text-ink">{shortName(personOf(p.from).name)}</span> paid{" "}
+          <span className="font-semibold text-ink">{shortName(personOf(p.from).name)}</span> {charityOf(p.to) ? "gave to" : "paid"}{" "}
           <span className="font-semibold text-ink">{shortName(personOf(p.to).name)}</span>
           {p.note && (
             <>

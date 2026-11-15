@@ -12,6 +12,7 @@ import { PRIVATE_MARK } from "@/lib/feed";
 import { useStore } from "@/lib/store";
 import { BackHeader, Screen } from "@/components/shell";
 import { AssetDot, Avatar, Card, Flag, SectionTitle } from "@/components/ui";
+import { DonationReceipt } from "@/components/donation-receipt";
 
 interface R {
   from: string;
@@ -23,11 +24,13 @@ interface R {
   block: bigint;
   time: number;
   feeMon: number;
+  logIndex: number;
+  fromWallet: string;
 }
 
 export function Receipt({ params }: { params: Promise<{ hash: string }> }) {
   const { hash } = use(params);
-  const { tokens, prices, personOf } = useStore();
+  const { tokens, prices, personOf, charityOf } = useStore();
   const [r, setR] = useState<R | null>(null);
   const [copied, setCopied] = useState(false);
   const [missing, setMissing] = useState<"" | "notfound" | "notpayment">("");
@@ -64,6 +67,8 @@ export function Receipt({ params }: { params: Promise<{ hash: string }> }) {
           block: rc.blockNumber,
           time: Number(blk.timestamp) * 1000,
           feeMon: Number(formatEther(rc.gasUsed * rc.effectiveGasPrice)),
+          logIndex: log.logIndex ?? 0,
+          fromWallet: ev.args.from,
         });
       }
       if (!found) setMissing("notpayment");
@@ -103,6 +108,7 @@ export function Receipt({ params }: { params: Promise<{ hash: string }> }) {
       </Screen>
     );
   const value = r.units * (prices[r.symbol]?.price ?? 0);
+  const org = charityOf(r.to);
   const rows: [string, string][] = [
     ["Status", "Settled"],
     ["Sent", `${unitsLabel(r.units, r.symbol)} (${META[r.symbol]?.name ?? r.symbol})`],
@@ -114,7 +120,7 @@ export function Receipt({ params }: { params: Promise<{ hash: string }> }) {
   ];
   return (
     <Screen tabs={false}>
-      <BackHeader title="Payment" />
+      <BackHeader title={org ? "Gift" : "Payment"} />
       <div className="px-4 pb-10">
         <div className="flex flex-col items-center pt-2 text-center">
           <div className="flex items-center -space-x-3">
@@ -122,8 +128,14 @@ export function Receipt({ params }: { params: Promise<{ hash: string }> }) {
             <Avatar handle={r.to} size={64} ring />
           </div>
           <p className="mt-4 text-[18px]">
-            <Link href={`/u/${r.from}`} className="font-semibold">{personOf(r.from).name}</Link> <Flag code={personOf(r.from).country} /> paid{" "}
-            <Link href={`/u/${r.to}`} className="font-semibold">{personOf(r.to).name}</Link> <Flag code={personOf(r.to).country} />
+            <Link href={`/u/${r.from}`} className="font-semibold">{personOf(r.from).name}</Link> <Flag code={personOf(r.from).country} /> {org ? "gave to" : "paid"}{" "}
+            {org ? (
+              <Link href={`/give/${r.to}`} className="font-semibold">{org.name}</Link>
+            ) : (
+              <>
+                <Link href={`/u/${r.to}`} className="font-semibold">{personOf(r.to).name}</Link> <Flag code={personOf(r.to).country} />
+              </>
+            )}
           </p>
           <p className="tabular mt-2 flex items-center gap-2 text-[40px] font-semibold tracking-tight">
             <AssetDot symbol={r.symbol} size={36} /> {usd(value)}
@@ -154,7 +166,8 @@ export function Receipt({ params }: { params: Promise<{ hash: string }> }) {
             <ArrowUpRight size={20} className="text-brand" />
           </a>
         </Card>
-        <div className="mt-4">
+        {org && <DonationReceipt c={org} g={{ hash, logIndex: r.logIndex, fromHandle: r.from, fromWallet: r.fromWallet, symbol: r.symbol, units: r.units, block: r.block, time: r.time, note: r.note }} />}
+        <div className="no-print mt-4">
           <button
             type="button"
             onClick={() => {
