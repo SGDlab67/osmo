@@ -5,10 +5,10 @@ export const deployment = {
   "chainId": 10143,
   "rpc": "https://testnet-rpc.monad.xyz",
   "explorer": "https://testnet.monadvision.com",
-  "deployBlock": 80023566,
-  "osmo": "0xC2f251c89Fac09830dadAb1Fc67Da885F01Bb45e",
-  "registry": "0xC90654Fe34e37dd30F54f980407F1973F7959EE3",
-  "welcome": "0x0000000000000000000000000000000000000000"
+  "deployBlock": 80039545,
+  "osmo": "0x7cBb7B49C8289b9765ca2B9307F44392AFE34E3c",
+  "registry": "0x5f24BE3dc850B14E71009b0E2e70f8d5614c483a",
+  "welcome": "0x720f70aAffE325728cFb1f493A2C39e15dD2bC3f"
 } as const;
 
 export const osmoAbi = [

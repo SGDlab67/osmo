@@ -16,3 +16,4 @@ demo/demo-keys.js
 
 # Local anvil deployments
 deployments/local.json
+/broadcast/**/*.lock

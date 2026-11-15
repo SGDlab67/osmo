@@ -1,16 +1,34 @@
 {
-  "name": "Monad testnet",
+  "assets": {
+    "AAPL": "0xd52E94a7e1eE7B2BA014E8aEA0fc0700b0664620",
+    "AMZN": "0x7370A2d63D4cF6E5e71Ae5aa7c8a7d93428Cf119",
+    "BTC": "0x3450Ab99a0cEA84ee011278336D60Af75b46DC77",
+    "BUIDL": "0x2dEE9815F4c59a4F1aabf0E93B721233aC47933f",
+    "COIN": "0x8245847d3E5220878DB327E817c72b83d71FD8d9",
+    "CRCL": "0x8DE7a31676c96f3e33eb4fd706B6Dd44c2Ec40B2",
+    "DAI": "0xDF9b35da848fEEAD2EcC63587e510FAf74d25C9A",
+    "ETH": "0x03473dedDDd78565694A8822d4b333F2D3225664",
+    "EURC": "0x74fC38741c4803E5B3D52eeF044081Eb83C38d56",
+    "GOOGL": "0xB7fB69238094EEe2326Ac3547C47BA1dFe0Ccd4D",
+    "KAG": "0x0F372dd40f37c91CD3BECa73fA8D6D099F092d0C",
+    "META": "0x33dF9820941a83d473FbFd9082b2c068e65c7A0f",
+    "MSFT": "0x67473fAB3E9503f68d7e01fBB473EB87922d152a",
+    "NFLX": "0x3ad6Cc77926e1717CdE93fea357E67B7267ffC13",
+    "NVDA": "0xc33a5b725261677B9a6508B31a44F7c122965a64",
+    "PAXG": "0x4a34d15A9385fb87bc7b8C6297Fd8281eA3e7C23",
+    "PYUSD": "0x5353b98bc28bECD09120f39EAe363B8D1F236786",
+    "SOL": "0x21de9c4693805cfB730e65D480ae8926245bc655",
+    "TSLA": "0xF098779cc3248b966Cd4DEB09E7a4720Bd0dcbBA",
+    "USDC": "0x23Be4b231eb2Fd7961A2b61bb974b53B843233f5",
+    "USDT": "0xA0171D1711cCfed93AB78392B43dCcD46Af4e59f",
+    "USDY": "0x9187d189F1a189b67D5B30d2D6b70Ae8881503dA",
+    "XAUT": "0x728c39dA64e51d7D0ad7C053c92c2a05493750AA"
+  },
   "chainId": 10143,
-  "rpc": "https://testnet-rpc.monad.xyz",
-  "explorer": "https://testnet.monadvision.com",
-  "nativeSymbol": "MON",
-  "nativeDecimals": 18,
-  "deployBlock": 80017489,
-  "deployer": "0xA87D1A929a93FbC809391F5FF53aaB9bdA54EB46",
   "contracts": {
     "Osmo": {
-      "address": "0xC2f251c89Fac09830dadAb1Fc67Da885F01Bb45e",
-      "deployBlock": 80023566,
+      "address": "0x7cBb7B49C8289b9765ca2B9307F44392AFE34E3c",
+      "deployBlock": 80039545,
       "abi": [
         {
           "type": "constructor",
@@ -942,7 +960,7 @@
       ]
     },
     "UsernameRegistry": {
-      "address": "0xC90654Fe34e37dd30F54f980407F1973F7959EE3",
+      "address": "0x5f24BE3dc850B14E71009b0E2e70f8d5614c483a",
       "abi": [
         {
           "type": "function",
@@ -1055,129 +1073,153 @@
         }
       ]
     },
-    "MockShare": {
-      "address": "0xc8045312f9739E980A6f8208Ea25aF2FDA2558EA",
+    "Welcome": {
+      "address": "0x720f70aAffE325728cFb1f493A2C39e15dD2bC3f",
       "abi": [
         {
           "type": "constructor",
           "inputs": [
             {
-              "name": "name_",
-              "type": "string",
-              "internalType": "string"
+              "name": "osmo_",
+              "type": "address",
+              "internalType": "address"
             },
             {
-              "name": "symbol_",
-              "type": "string",
-              "internalType": "string"
+              "name": "gasGrant_",
+              "type": "uint256",
+              "internalType": "uint256"
             }
           ],
           "stateMutability": "nonpayable"
         },
         {
-          "type": "function",
-          "name": "allowance",
-          "inputs": [
-            {
-              "name": "owner",
-              "type": "address",
-              "internalType": "address"
-            },
-            {
-              "name": "spender",
-              "type": "address",
-              "internalType": "address"
-            }
-          ],
-          "outputs": [
-            {
-              "name": "",
-              "type": "uint256",
-              "internalType": "uint256"
-            }
-          ],
-          "stateMutability": "view"
+          "type": "receive",
+          "stateMutability": "payable"
         },
         {
           "type": "function",
-          "name": "approve",
-          "inputs": [
-            {
-              "name": "spender",
-              "type": "address",
-              "internalType": "address"
-            },
-            {
-              "name": "value",
-              "type": "uint256",
-              "internalType": "uint256"
-            }
-          ],
-          "outputs": [
-            {
-              "name": "",
-              "type": "bool",
-              "internalType": "bool"
-            }
-          ],
-          "stateMutability": "nonpayable"
-        },
-        {
-          "type": "function",
-          "name": "balanceOf",
-          "inputs": [
-            {
-              "name": "account",
-              "type": "address",
-              "internalType": "address"
-            }
-          ],
-          "outputs": [
-            {
-              "name": "",
-              "type": "uint256",
-              "internalType": "uint256"
-            }
-          ],
-          "stateMutability": "view"
-        },
-        {
-          "type": "function",
-          "name": "decimals",
+          "name": "MAX_PROFILE_BYTES",
           "inputs": [],
           "outputs": [
             {
               "name": "",
+              "type": "uint256",
+              "internalType": "uint256"
+            }
+          ],
+          "stateMutability": "view"
+        },
+        {
+          "type": "function",
+          "name": "assetBySymbol",
+          "inputs": [
+            {
+              "name": "",
+              "type": "string",
+              "internalType": "string"
+            }
+          ],
+          "outputs": [
+            {
+              "name": "",
+              "type": "address",
+              "internalType": "contract DemoAsset"
+            }
+          ],
+          "stateMutability": "view"
+        },
+        {
+          "type": "function",
+          "name": "assetCount",
+          "inputs": [],
+          "outputs": [
+            {
+              "name": "",
+              "type": "uint256",
+              "internalType": "uint256"
+            }
+          ],
+          "stateMutability": "view"
+        },
+        {
+          "type": "function",
+          "name": "assetImpl",
+          "inputs": [],
+          "outputs": [
+            {
+              "name": "",
+              "type": "address",
+              "internalType": "address"
+            }
+          ],
+          "stateMutability": "view"
+        },
+        {
+          "type": "function",
+          "name": "assets",
+          "inputs": [
+            {
+              "name": "",
+              "type": "uint256",
+              "internalType": "uint256"
+            }
+          ],
+          "outputs": [
+            {
+              "name": "",
+              "type": "address",
+              "internalType": "contract DemoAsset"
+            }
+          ],
+          "stateMutability": "view"
+        },
+        {
+          "type": "function",
+          "name": "closeRequest",
+          "inputs": [
+            {
+              "name": "id",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "status",
               "type": "uint8",
-              "internalType": "uint8"
+              "internalType": "enum Welcome.Status"
             }
           ],
-          "stateMutability": "view"
+          "outputs": [],
+          "stateMutability": "nonpayable"
         },
         {
           "type": "function",
-          "name": "issuer",
+          "name": "gasGrant",
           "inputs": [],
           "outputs": [
             {
               "name": "",
-              "type": "address",
-              "internalType": "address"
+              "type": "uint256",
+              "internalType": "uint256"
             }
           ],
           "stateMutability": "view"
         },
         {
           "type": "function",
-          "name": "mint",
+          "name": "grant",
           "inputs": [
             {
-              "name": "to",
+              "name": "user",
               "type": "address",
               "internalType": "address"
             },
             {
-              "name": "value",
+              "name": "token",
+              "type": "address",
+              "internalType": "contract DemoAsset"
+            },
+            {
+              "name": "amount",
               "type": "uint256",
               "internalType": "uint256"
             }
@@ -1187,8 +1229,164 @@
         },
         {
           "type": "function",
-          "name": "name",
+          "name": "isAsset",
+          "inputs": [
+            {
+              "name": "",
+              "type": "address",
+              "internalType": "address"
+            }
+          ],
+          "outputs": [
+            {
+              "name": "",
+              "type": "bool",
+              "internalType": "bool"
+            }
+          ],
+          "stateMutability": "view"
+        },
+        {
+          "type": "function",
+          "name": "isOperator",
+          "inputs": [
+            {
+              "name": "",
+              "type": "address",
+              "internalType": "address"
+            }
+          ],
+          "outputs": [
+            {
+              "name": "",
+              "type": "bool",
+              "internalType": "bool"
+            }
+          ],
+          "stateMutability": "view"
+        },
+        {
+          "type": "function",
+          "name": "kit",
           "inputs": [],
+          "outputs": [
+            {
+              "name": "",
+              "type": "tuple[]",
+              "internalType": "struct Welcome.Grant[]",
+              "components": [
+                {
+                  "name": "token",
+                  "type": "address",
+                  "internalType": "contract DemoAsset"
+                },
+                {
+                  "name": "amount",
+                  "type": "uint96",
+                  "internalType": "uint96"
+                }
+              ]
+            }
+          ],
+          "stateMutability": "view"
+        },
+        {
+          "type": "function",
+          "name": "listAsset",
+          "inputs": [
+            {
+              "name": "name",
+              "type": "string",
+              "internalType": "string"
+            },
+            {
+              "name": "symbol",
+              "type": "string",
+              "internalType": "string"
+            },
+            {
+              "name": "decimals",
+              "type": "uint8",
+              "internalType": "uint8"
+            }
+          ],
+          "outputs": [
+            {
+              "name": "token",
+              "type": "address",
+              "internalType": "contract DemoAsset"
+            }
+          ],
+          "stateMutability": "nonpayable"
+        },
+        {
+          "type": "function",
+          "name": "memberCount",
+          "inputs": [],
+          "outputs": [
+            {
+              "name": "",
+              "type": "uint256",
+              "internalType": "uint256"
+            }
+          ],
+          "stateMutability": "view"
+        },
+        {
+          "type": "function",
+          "name": "members",
+          "inputs": [
+            {
+              "name": "",
+              "type": "uint256",
+              "internalType": "uint256"
+            }
+          ],
+          "outputs": [
+            {
+              "name": "",
+              "type": "address",
+              "internalType": "address"
+            }
+          ],
+          "stateMutability": "view"
+        },
+        {
+          "type": "function",
+          "name": "osmo",
+          "inputs": [],
+          "outputs": [
+            {
+              "name": "",
+              "type": "address",
+              "internalType": "address"
+            }
+          ],
+          "stateMutability": "view"
+        },
+        {
+          "type": "function",
+          "name": "owner",
+          "inputs": [],
+          "outputs": [
+            {
+              "name": "",
+              "type": "address",
+              "internalType": "address"
+            }
+          ],
+          "stateMutability": "view"
+        },
+        {
+          "type": "function",
+          "name": "profileOf",
+          "inputs": [
+            {
+              "name": "",
+              "type": "address",
+              "internalType": "address"
+            }
+          ],
           "outputs": [
             {
               "name": "",
@@ -1200,11 +1398,79 @@
         },
         {
           "type": "function",
-          "name": "symbol",
+          "name": "request",
+          "inputs": [
+            {
+              "name": "payer",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "usdCents",
+              "type": "uint64",
+              "internalType": "uint64"
+            },
+            {
+              "name": "note",
+              "type": "string",
+              "internalType": "string"
+            }
+          ],
+          "outputs": [
+            {
+              "name": "id",
+              "type": "uint256",
+              "internalType": "uint256"
+            }
+          ],
+          "stateMutability": "nonpayable"
+        },
+        {
+          "type": "function",
+          "name": "requestCount",
           "inputs": [],
           "outputs": [
             {
               "name": "",
+              "type": "uint256",
+              "internalType": "uint256"
+            }
+          ],
+          "stateMutability": "view"
+        },
+        {
+          "type": "function",
+          "name": "requests",
+          "inputs": [
+            {
+              "name": "",
+              "type": "uint256",
+              "internalType": "uint256"
+            }
+          ],
+          "outputs": [
+            {
+              "name": "from",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "payer",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "usdCents",
+              "type": "uint64",
+              "internalType": "uint64"
+            },
+            {
+              "name": "status",
+              "type": "uint8",
+              "internalType": "enum Welcome.Status"
+            },
+            {
+              "name": "note",
               "type": "string",
               "internalType": "string"
             }
@@ -1213,88 +1479,158 @@
         },
         {
           "type": "function",
-          "name": "totalSupply",
-          "inputs": [],
+          "name": "setGasGrant",
+          "inputs": [
+            {
+              "name": "amount",
+              "type": "uint256",
+              "internalType": "uint256"
+            }
+          ],
+          "outputs": [],
+          "stateMutability": "nonpayable"
+        },
+        {
+          "type": "function",
+          "name": "setKit",
+          "inputs": [
+            {
+              "name": "tokens",
+              "type": "address[]",
+              "internalType": "contract DemoAsset[]"
+            },
+            {
+              "name": "amounts",
+              "type": "uint96[]",
+              "internalType": "uint96[]"
+            }
+          ],
+          "outputs": [],
+          "stateMutability": "nonpayable"
+        },
+        {
+          "type": "function",
+          "name": "setOperator",
+          "inputs": [
+            {
+              "name": "who",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "on",
+              "type": "bool",
+              "internalType": "bool"
+            }
+          ],
+          "outputs": [],
+          "stateMutability": "nonpayable"
+        },
+        {
+          "type": "function",
+          "name": "setProfile",
+          "inputs": [
+            {
+              "name": "profile",
+              "type": "string",
+              "internalType": "string"
+            }
+          ],
+          "outputs": [],
+          "stateMutability": "nonpayable"
+        },
+        {
+          "type": "function",
+          "name": "welcome",
+          "inputs": [
+            {
+              "name": "user",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "profile",
+              "type": "string",
+              "internalType": "string"
+            }
+          ],
+          "outputs": [],
+          "stateMutability": "nonpayable"
+        },
+        {
+          "type": "function",
+          "name": "welcomed",
+          "inputs": [
+            {
+              "name": "",
+              "type": "address",
+              "internalType": "address"
+            }
+          ],
           "outputs": [
             {
               "name": "",
-              "type": "uint256",
-              "internalType": "uint256"
+              "type": "bool",
+              "internalType": "bool"
             }
           ],
           "stateMutability": "view"
         },
         {
           "type": "function",
-          "name": "transfer",
+          "name": "withdraw",
           "inputs": [
             {
               "name": "to",
               "type": "address",
-              "internalType": "address"
+              "internalType": "address payable"
             },
             {
-              "name": "value",
+              "name": "amount",
               "type": "uint256",
               "internalType": "uint256"
             }
           ],
-          "outputs": [
-            {
-              "name": "",
-              "type": "bool",
-              "internalType": "bool"
-            }
-          ],
-          "stateMutability": "nonpayable"
-        },
-        {
-          "type": "function",
-          "name": "transferFrom",
-          "inputs": [
-            {
-              "name": "from",
-              "type": "address",
-              "internalType": "address"
-            },
-            {
-              "name": "to",
-              "type": "address",
-              "internalType": "address"
-            },
-            {
-              "name": "value",
-              "type": "uint256",
-              "internalType": "uint256"
-            }
-          ],
-          "outputs": [
-            {
-              "name": "",
-              "type": "bool",
-              "internalType": "bool"
-            }
-          ],
+          "outputs": [],
           "stateMutability": "nonpayable"
         },
         {
           "type": "event",
-          "name": "Approval",
+          "name": "AssetListed",
           "inputs": [
             {
-              "name": "owner",
+              "name": "symbol",
+              "type": "string",
+              "indexed": false,
+              "internalType": "string"
+            },
+            {
+              "name": "token",
+              "type": "address",
+              "indexed": false,
+              "internalType": "address"
+            }
+          ],
+          "anonymous": false
+        },
+        {
+          "type": "event",
+          "name": "Granted",
+          "inputs": [
+            {
+              "name": "user",
               "type": "address",
               "indexed": true,
               "internalType": "address"
             },
             {
-              "name": "spender",
+              "name": "token",
               "type": "address",
               "indexed": true,
               "internalType": "address"
             },
             {
-              "name": "value",
+              "name": "amount",
               "type": "uint256",
               "indexed": false,
               "internalType": "uint256"
@@ -1304,8 +1640,52 @@
         },
         {
           "type": "event",
-          "name": "Transfer",
+          "name": "ProfileSet",
           "inputs": [
+            {
+              "name": "user",
+              "type": "address",
+              "indexed": true,
+              "internalType": "address"
+            },
+            {
+              "name": "profile",
+              "type": "string",
+              "indexed": false,
+              "internalType": "string"
+            }
+          ],
+          "anonymous": false
+        },
+        {
+          "type": "event",
+          "name": "RequestClosed",
+          "inputs": [
+            {
+              "name": "id",
+              "type": "uint256",
+              "indexed": true,
+              "internalType": "uint256"
+            },
+            {
+              "name": "status",
+              "type": "uint8",
+              "indexed": false,
+              "internalType": "enum Welcome.Status"
+            }
+          ],
+          "anonymous": false
+        },
+        {
+          "type": "event",
+          "name": "Requested",
+          "inputs": [
+            {
+              "name": "id",
+              "type": "uint256",
+              "indexed": true,
+              "internalType": "uint256"
+            },
             {
               "name": "from",
               "type": "address",
@@ -1313,13 +1693,38 @@
               "internalType": "address"
             },
             {
-              "name": "to",
+              "name": "payer",
               "type": "address",
               "indexed": true,
               "internalType": "address"
             },
             {
-              "name": "value",
+              "name": "usdCents",
+              "type": "uint256",
+              "indexed": false,
+              "internalType": "uint256"
+            },
+            {
+              "name": "note",
+              "type": "string",
+              "indexed": false,
+              "internalType": "string"
+            }
+          ],
+          "anonymous": false
+        },
+        {
+          "type": "event",
+          "name": "Welcomed",
+          "inputs": [
+            {
+              "name": "user",
+              "type": "address",
+              "indexed": true,
+              "internalType": "address"
+            },
+            {
+              "name": "gas",
               "type": "uint256",
               "indexed": false,
               "internalType": "uint256"
@@ -1329,34 +1734,13 @@
         },
         {
           "type": "error",
-          "name": "ERC20InsufficientAllowance",
-          "inputs": [
-            {
-              "name": "spender",
-              "type": "address",
-              "internalType": "address"
-            },
-            {
-              "name": "allowance",
-              "type": "uint256",
-              "internalType": "uint256"
-            },
-            {
-              "name": "needed",
-              "type": "uint256",
-              "internalType": "uint256"
-            }
-          ]
+          "name": "FailedDeployment",
+          "inputs": []
         },
         {
           "type": "error",
-          "name": "ERC20InsufficientBalance",
+          "name": "InsufficientBalance",
           "inputs": [
-            {
-              "name": "sender",
-              "type": "address",
-              "internalType": "address"
-            },
             {
               "name": "balance",
               "type": "uint256",
@@ -1371,51 +1755,52 @@
         },
         {
           "type": "error",
-          "name": "ERC20InvalidApprover",
-          "inputs": [
-            {
-              "name": "approver",
-              "type": "address",
-              "internalType": "address"
-            }
-          ]
+          "name": "LengthMismatch",
+          "inputs": []
         },
         {
           "type": "error",
-          "name": "ERC20InvalidReceiver",
-          "inputs": [
-            {
-              "name": "receiver",
-              "type": "address",
-              "internalType": "address"
-            }
-          ]
+          "name": "NotMember",
+          "inputs": []
         },
         {
           "type": "error",
-          "name": "ERC20InvalidSender",
-          "inputs": [
-            {
-              "name": "sender",
-              "type": "address",
-              "internalType": "address"
-            }
-          ]
+          "name": "NotOpen",
+          "inputs": []
         },
         {
           "type": "error",
-          "name": "ERC20InvalidSpender",
-          "inputs": [
-            {
-              "name": "spender",
-              "type": "address",
-              "internalType": "address"
-            }
-          ]
+          "name": "NotOperator",
+          "inputs": []
         },
         {
           "type": "error",
-          "name": "NotIssuer",
+          "name": "NotOwner",
+          "inputs": []
+        },
+        {
+          "type": "error",
+          "name": "NotYours",
+          "inputs": []
+        },
+        {
+          "type": "error",
+          "name": "ProfileTooLong",
+          "inputs": []
+        },
+        {
+          "type": "error",
+          "name": "SymbolTaken",
+          "inputs": []
+        },
+        {
+          "type": "error",
+          "name": "TransferFailed",
+          "inputs": []
+        },
+        {
+          "type": "error",
+          "name": "UnknownAsset",
           "inputs": []
         }
       ]
@@ -1423,6 +1808,14 @@
   },
   "demoAccounts": {
     "alice": "0x9eD68aFD9aF46Aea351B78D491068Ca23aEe5dB5",
-    "bob": "0xa76e8E1193b48e483224eb311ea4Fc14158eDEAF"
-  }
+    "bob": "0xa76e8E1193b48e483224eb311ea4Fc14158eDEAF",
+    "share": "0xc33a5b725261677B9a6508B31a44F7c122965a64"
+  },
+  "deployBlock": 80039545,
+  "deployer": "0xC0174C468dac441C96EcD215340eEaf37Bdd40ED",
+  "explorer": "https://testnet.monadvision.com",
+  "name": "Monad testnet",
+  "nativeDecimals": 18,
+  "nativeSymbol": "MON",
+  "rpc": "https://testnet-rpc.monad.xyz"
 }

@@ -135,21 +135,28 @@ only with the person it is for.
 
 ## Deployed addresses
 
-Monad testnet, chain ID 10143. The registry and the share were deployed
-on 2026-11-15 from block 80017489, and `Osmo` in block 80023566.
+Monad testnet, chain ID 10143. The whole app was deployed together on
+2026-11-15 with `script/Deploy.s.sol`: the registry, `Osmo`, `Welcome` and
+the 23 demo assets.
 
 | Contract | Address |
 | --- | --- |
-| `Osmo` | `0xC2f251c89Fac09830dadAb1Fc67Da885F01Bb45e` |
-| `UsernameRegistry` | `0xC90654Fe34e37dd30F54f980407F1973F7959EE3` |
-| `MockShare` | `0xc8045312f9739E980A6f8208Ea25aF2FDA2558EA` |
+| `Osmo` | [`0x7cBb7B49C8289b9765ca2B9307F44392AFE34E3c`](https://testnet.monadscan.com/address/0x7cBb7B49C8289b9765ca2B9307F44392AFE34E3c) |
+| `UsernameRegistry` | [`0x5f24BE3dc850B14E71009b0E2e70f8d5614c483a`](https://testnet.monadscan.com/address/0x5f24BE3dc850B14E71009b0E2e70f8d5614c483a) |
+| `Welcome` | [`0x720f70aAffE325728cFb1f493A2C39e15dD2bC3f`](https://testnet.monadscan.com/address/0x720f70aAffE325728cFb1f493A2C39e15dD2bC3f) |
+| `DemoAsset` NVDA (one of 23) | [`0xc33a5b725261677B9a6508B31a44F7c122965a64`](https://testnet.monadscan.com/address/0xc33a5b725261677B9a6508B31a44F7c122965a64) |
 
-Addresses and ABIs are also in `deployments/monad-testnet.json`.
+Every address, including all 23 demo assets, is in `deployments/monad-testnet.json`.
 
-This is the deployment from before the app's layer was merged in. The next
-run of `script/Deploy.s.sol` deploys everything together (registry, `Osmo`,
-`Welcome` and the 23 demo assets), rewrites `deployments/monad-testnet.json`,
-and `npm run contracts` points the app and the demo client at it.
+A real payment through the app: `@charlie_sneed` paid `@taihl_gilmore` $10 in
+NVIDIA (0.0604 NVDA) for pizza, settled in 296 ms in block 80042503,
+[`0x10a3e755…13cf8bf`](https://testnet.monadscan.com/tx/0x10a3e7551f0345886babce30c0c79b02b5b32d1f6a8e56d22cae20d0213cf8bf).
+
+The first contracts Taihl deployed that morning, before the app was merged
+in, are still live: `Osmo` `0xC2f251c89Fac09830dadAb1Fc67Da885F01Bb45e`,
+`UsernameRegistry` `0xC90654Fe34e37dd30F54f980407F1973F7959EE3` and
+`MockShare` `0xc8045312f9739E980A6f8208Ea25aF2FDA2558EA`. The rehearsal below
+ran against those.
 
 ## Rehearsed on Monad testnet
 

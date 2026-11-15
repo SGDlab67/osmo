@@ -1,5 +1,5 @@
-import { createPublicClient, createWalletClient, defineChain, formatEther, http, type Account, type Hash } from "viem";
-import { config, monadscan } from "./config";
+import { createPublicClient, createWalletClient, defineChain, fallback, formatEther, http, type Account, type Hash } from "viem";
+import { config, monadscan, rpcs } from "./config";
 
 const onMonad = config.chainId === 10143 || config.chainId === 143;
 
@@ -15,10 +15,18 @@ export const chain = defineChain({
 
 // Reads made in the same moment travel as one JSON-RPC batch, and contract reads are folded into a single
 // Multicall3 call, so a room full of phones on one Wi-Fi (one IP) stays under the public RPC's rate limit.
-export const publicClient = createPublicClient({ chain, transport: http(config.rpc, { batch: { wait: 16 } }), batch: onMonad ? { multicall: { wait: 16 } } : undefined });
+const transport = (batch: boolean) =>
+  rpcs.length > 1
+    ? fallback(
+        rpcs.map((u) => http(u, { batch: batch ? { wait: 16 } : false, retryCount: 0, timeout: 8000 })),
+        { retryCount: 2, retryDelay: 250 },
+      )
+    : http(rpcs[0], { batch: batch ? { wait: 16 } : false });
+
+export const publicClient = createPublicClient({ chain, transport: transport(true), batch: onMonad ? { multicall: { wait: 16 } } : undefined });
 
 export function walletFor(account: Account) {
-  return createWalletClient({ account, chain, transport: http(config.rpc) });
+  return createWalletClient({ account, chain, transport: transport(false) });
 }
 
 export const txUrl = (hash: string) => `${config.explorer}/tx/${hash}`;

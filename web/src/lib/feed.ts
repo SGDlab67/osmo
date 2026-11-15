@@ -21,6 +21,10 @@ export interface Payment {
 }
 
 const handles = new Map<string, string>();
+/** Decoded payments per block. A block's payments never change, so each block is fetched once. */
+const blockCache = new Map<bigint, Payment[]>();
+/** sentBlocks is append-only, so each index is read once. */
+const sentBlockAt = new Map<bigint, bigint>();
 
 async function handleOf(a: `0x${string}`) {
   const k = a.toLowerCase();
@@ -39,38 +43,45 @@ export async function sentBlockCount() {
  * Recent payments, newest first. Monad's public RPC answers eth_getLogs for 100 blocks at a time, so Osmo
  * keeps a list of the blocks that hold a send (`sentBlocks`) and the app asks for exactly those blocks.
  */
-export async function readFeed(tokens: Token[], count: number, lastN = 30): Promise<Payment[]> {
+export async function readFeed(tokens: Token[], count: number, lastN = 40): Promise<Payment[]> {
   if (count === 0) return [];
   const idx = Array.from({ length: Math.min(lastN, count) }, (_, i) => BigInt(count - 1 - i));
-  const blocks = [...new Set(await Promise.all(idx.map((i) => publicClient.readContract({ address: config.osmo, abi: osmoAbi, functionName: "sentBlocks", args: [i] }))))];
+  const unknown = idx.filter((i) => !sentBlockAt.has(i));
+  const read = await Promise.all(unknown.map((i) => publicClient.readContract({ address: config.osmo, abi: osmoAbi, functionName: "sentBlocks", args: [i] })));
+  unknown.forEach((i, k) => sentBlockAt.set(i, BigInt(read[k])));
+  const blocks = [...new Set(idx.map((i) => sentBlockAt.get(i)!))];
   const bySymbol = new Map(tokens.map((t) => [t.address.toLowerCase(), t]));
-  const [logsPerBlock, times] = await Promise.all([
-    Promise.all(blocks.map((b) => publicClient.getLogs({ address: config.osmo, fromBlock: BigInt(b), toBlock: BigInt(b) }))),
-    Promise.all(blocks.map((b) => publicClient.getBlock({ blockNumber: BigInt(b) }).then((x) => Number(x.timestamp) * 1000).catch(() => Date.now()))),
-  ]);
-  const out: Payment[] = [];
-  for (let i = 0; i < blocks.length; i++) {
-    for (const log of logsPerBlock[i]) {
-      try {
-        const ev = decodeEventLog({ abi: osmoAbi, data: log.data, topics: log.topics });
-        if (ev.eventName !== "Sent") continue;
-        const t = bySymbol.get(ev.args.token.toLowerCase());
-        if (!t) continue;
-        const isPrivate = ev.args.memo.startsWith(PRIVATE_MARK);
-        out.push({
-          id: `${log.transactionHash}-${log.logIndex}`,
-          hash: log.transactionHash!,
-          block: log.blockNumber!,
-          from: await handleOf(ev.args.from),
-          to: ev.args.name.toLowerCase(),
-          symbol: t.symbol,
-          units: Number(formatUnits(ev.args.value, t.decimals)),
-          note: isPrivate ? ev.args.memo.slice(PRIVATE_MARK.length) : ev.args.memo,
-          isPrivate,
-          time: times[i],
-        });
-      } catch {}
-    }
-  }
-  return out.sort((a, b) => Number(b.block - a.block));
+  const fresh = blocks.filter((b) => !blockCache.has(b));
+  await Promise.all(
+    fresh.map(async (b) => {
+      const [logs, time] = await Promise.all([
+        publicClient.getLogs({ address: config.osmo, fromBlock: b, toBlock: b }),
+        publicClient.getBlock({ blockNumber: b }).then((x) => Number(x.timestamp) * 1000).catch(() => Date.now()),
+      ]);
+      const out: Payment[] = [];
+      for (const log of logs) {
+        try {
+          const ev = decodeEventLog({ abi: osmoAbi, data: log.data, topics: log.topics });
+          if (ev.eventName !== "Sent") continue;
+          const t = bySymbol.get(ev.args.token.toLowerCase());
+          if (!t) continue;
+          const isPrivate = ev.args.memo.startsWith(PRIVATE_MARK);
+          out.push({
+            id: `${log.transactionHash}-${log.logIndex}`,
+            hash: log.transactionHash!,
+            block: log.blockNumber!,
+            from: await handleOf(ev.args.from),
+            to: ev.args.name.toLowerCase(),
+            symbol: t.symbol,
+            units: Number(formatUnits(ev.args.value, t.decimals)),
+            note: isPrivate ? ev.args.memo.slice(PRIVATE_MARK.length) : ev.args.memo,
+            isPrivate,
+            time,
+          });
+        } catch {}
+      }
+      blockCache.set(b, out);
+    }),
+  );
+  return blocks.flatMap((b) => blockCache.get(b) ?? []).sort((a, b) => Number(b.block - a.block));
 }
