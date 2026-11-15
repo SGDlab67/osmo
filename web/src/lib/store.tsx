@@ -4,7 +4,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import type { PrivateKeyAccount } from "viem/accounts";
 import { registryAbi, osmoAbi, welcomeAbi } from "./abi";
 import { META, MON_GAS_RESERVE, balancesOf, toRaw, unitsFor, type Token } from "./assets";
-import { createWallet, forgetWallet, loadWallet, saveName } from "./burner";
+import { createWallet, forgetWallet, loadWallet, saveName, takeImportFromUrl } from "./burner";
 import { publicClient, sendAndConfirm, type Sent } from "./chain";
 import { config } from "./config";
 import { PRIVATE_MARK, type Payment } from "./feed";
@@ -127,8 +127,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    requestAnimationFrame(() => {
+    requestAnimationFrame(async () => {
       setLocal(readLocal());
+      // An account moved here by link: look up its username on chain before showing the app.
+      if (takeImportFromUrl()) {
+        const acct = loadWallet()?.account;
+        const name = acct ? await publicClient.readContract({ address: config.registry, abi: registryAbi, functionName: "nameOf", args: [acct.address] }).catch(() => "") : "";
+        if (name) saveName(name.toLowerCase());
+      }
       const w = loadWallet();
       if (w && w.name) {
         setAccount(w.account);
@@ -351,8 +357,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       if (p.to === handle) set.add(p.from);
     }
     set.delete(handle);
+    // Charities you gave to aren't friends.
+    for (const c of charities) set.delete(c.handle);
     return [...set];
-  }, [local, handle, feed]);
+  }, [local, handle, feed, charities]);
   const addFriend = useCallback((h: string) => saveLocal((l) => ({ ...l, friends: { ...l.friends, [handle]: [...new Set([...(l.friends[handle] ?? []), h])] } })), [handle, saveLocal]);
   const removeFriend = useCallback((h: string) => saveLocal((l) => ({ ...l, friends: { ...l.friends, [handle]: (l.friends[handle] ?? []).filter((x) => x !== h) } })), [handle, saveLocal]);
   const react = useCallback(

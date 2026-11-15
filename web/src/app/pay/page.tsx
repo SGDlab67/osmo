@@ -30,7 +30,7 @@ function friendly(e: unknown) {
 function PayPageFlow({ params }: { params: Record<string, string> }) {
   const ok = useRequireAccount();
   const router = useRouter();
-  const { me, people, personOf, balances, prices, spendable, pay, request, feed, friends } = useStore();
+  const { me, people, personOf, balances, prices, spendable, pay, request, feed, friends, charityOf } = useStore();
   const [toPicked, setTo] = useState<string | null>(null);
   const rawTo = (toPicked ?? params.to ?? "").toLowerCase();
   // You can't pay yourself; a link to your own code lands on the person picker instead.
@@ -56,10 +56,10 @@ function PayPageFlow({ params }: { params: Record<string, string> }) {
     const out: string[] = [];
     for (const p of feed) {
       const o = p.from === me.handle ? p.to : p.to === me.handle ? p.from : null;
-      if (o && !out.includes(o)) out.push(o);
+      if (o && !out.includes(o) && !charityOf(o)) out.push(o);
     }
     return out.slice(0, 8);
-  }, [feed, me]);
+  }, [feed, me, charityOf]);
 
   const q = query.trim().toLowerCase().replace(/^@/, "");
   const match = (p: { handle: string; name: string }) => !q || p.handle.includes(q) || p.name.toLowerCase().includes(q);

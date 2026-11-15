@@ -27,3 +27,17 @@ export function forgetWallet() {
   localStorage.removeItem(KEY);
   localStorage.removeItem(NAME);
 }
+
+/**
+ * Move an account to another phone: open the app with #import=<key> and the wallet is saved here, then the link's
+ * fragment is wiped. The fragment never reaches a server. Testnet only, like the rest of this file.
+ */
+export function takeImportFromUrl(): `0x${string}` | null {
+  if (typeof window === "undefined") return null;
+  const m = location.hash.match(/import=(0x[0-9a-fA-F]{64})/);
+  if (!m) return null;
+  history.replaceState(null, "", location.pathname + location.search);
+  localStorage.setItem(KEY, m[1]);
+  localStorage.removeItem(NAME);
+  return m[1] as `0x${string}`;
+}
