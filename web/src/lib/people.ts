@@ -10,6 +10,8 @@ export function pictureUrl(id: string) {
   if (id.startsWith("px")) return `/pixel/${id}.png`;
   if (id.startsWith("person:")) return `/people/${id.slice(7)}.png`;
   if (id.startsWith("charity:")) return `/charities/${id.slice(8)}.png`;
+  // The team's real photos, set on their own profiles. Not offered in the picker, so nobody else can pick them.
+  if (id.startsWith("photo:") && /^[a-z]+$/.test(id.slice(6))) return `/photos/${id.slice(6)}.jpg`;
   return `/avatars/${id}.svg`;
 }
 
