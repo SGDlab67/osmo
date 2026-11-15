@@ -44,3 +44,7 @@ export const FEATURED = "standwithcrypto";
 
 /** Receipt id: the first 10 hex characters of keccak256(txHash, logIndex). */
 export const receiptId = (hash: string, logIndex: number) => keccak256(toBytes(`${hash.toLowerCase()}:${logIndex}`)).slice(2, 12).toUpperCase();
+
+/** Shorter names for the feed and buttons, where the full name would take a whole line. Not part of the hashed record. */
+const SHORT: Record<string, string> = { stjude: "St. Jude", feedingamerica: "Feeding America", woundedwarrior: "Wounded Warrior Project" };
+export const shortCharityName = (r: Pick<CharityRecord, "handle" | "name">) => SHORT[r.handle] ?? r.name;

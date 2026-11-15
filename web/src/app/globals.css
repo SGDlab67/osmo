@@ -235,33 +235,3 @@ label:is(.rounded-full, .rounded-2xl):has(input:focus) {
 .banner-out {
   animation: banner-out 0.26s ease-in forwards;
 }
-
-/* Receipts and the tax summary print on their own: everything else on the page is hidden. */
-@media print {
-  @page {
-    margin: 14mm;
-  }
-  body * {
-    visibility: hidden !important;
-  }
-  .print-area,
-  .print-area * {
-    visibility: visible !important;
-  }
-  .print-area {
-    position: absolute !important;
-    left: 0;
-    top: 0;
-    width: 100%;
-    margin: 0 !important;
-  }
-  .print-area .no-print {
-    display: none !important;
-  }
-  html,
-  body {
-    background: #fff !important;
-    height: auto !important;
-    overflow: visible !important;
-  }
-}

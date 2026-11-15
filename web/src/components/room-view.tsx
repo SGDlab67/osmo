@@ -29,7 +29,8 @@ function RoomCard({ p, hero = false }: { p: Payment; hero?: boolean }) {
           {p.note && (
             <>
               {" "}
-              for <span className="font-semibold text-ink">{p.note}</span>
+              {/^for\b/i.test(p.note) ? "" : "for "}
+              <span className="font-semibold text-ink">{p.note}</span>
             </>
           )}
         </p>
