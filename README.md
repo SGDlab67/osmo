@@ -307,7 +307,8 @@ Written at the Blitz on 2026-11-15, from an empty `create-next-app`: a phone-fir
 Tailwind 4, viem) that talks straight to the contracts above. The product and its look come from our UBC Hackathon
 project, with the organizer's OK. The code was written again here today. The only files carried over are images:
 the asset logos (the companies' own marks), the profile pictures (Google's Noto emoji, Apache 2.0, and pixel-art
-faces drawn by our own generator script) and our logo.
+faces drawn by our own generator script) and our logo. Added on the day: the charities' official logos and our own
+two profile photos.
 
 **Screens**
 
@@ -322,9 +323,11 @@ faces drawn by our own generator script) and our logo.
 | Buy | Pick an asset by market, an amount and a method (Apple Pay, card, Venmo, PayPal, Cash App, bank, wallet). Demo only: no real money moves, the server mints the test asset through `Welcome.grant`, capped at $100 |
 | Portfolio | Total with today's move, a chart of what you hold at real prices over 1D / 1W / 1M (drag to scrub), Add money / Buy / Send, "What you hold" mix, holdings by group, markets you don't hold, and a hide-amounts eye |
 | Markets | All 24 assets with live prices, "Moving today", 7-day lines, filters, search and sorting; each has an asset page with a chart |
-| Payment page | `/p/<tx hash>`: who paid whom, what, when, the fee and the block, read from the transaction itself |
+| Payment page | `/p/<tx hash>`: who paid whom, what, when, the fee and the block, read from the transaction itself, with a MonadScan link |
 | Profiles | Picture, name, flag, Pay or request, Add friend, their portfolio (total and each holding as a share), "Between you" and their payments |
 | Me | Notifications, settings, your code, Live on Monad (the room screen), your profile, requests and your activity |
+| Give | The heart on Home: 20 verified nonprofits by cause, a page for each (mission, EIN, tax status), give any asset you hold in three taps |
+| Gift receipt | On each gift's page: the charity's legal name and EIN, the value on the day you gave, tax-deductible or not, and **Download PDF** (a real PDF made on the phone with the full record and audit trail). `/give/summary` totals the year with a PDF and a CSV |
 
 Friends, reactions and the hide-amounts switch are kept on the phone. Payments, profiles, the member list and requests are on Monad.
 

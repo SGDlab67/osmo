@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { Lock, SmilePlus } from "lucide-react";
 import { useRef, useState } from "react";
 import { usd } from "@/lib/assets";
-import { CHARITY_RECORDS } from "@/lib/charities";
+import { CHARITY_RECORDS, shortCharityName } from "@/lib/charities";
 import type { Payment } from "@/lib/feed";
 import { useNow } from "@/lib/hooks";
 import { useStore } from "@/lib/store";
@@ -13,11 +13,12 @@ import { AssetChip, Avatar, Card, ago } from "./ui";
 
 export const REACTIONS = ["❤️", "🔥", "😂", "🙏", "🎉"];
 
-const ORG_NAMES = new Set(CHARITY_RECORDS.map((r) => r.name));
+const ORG_NAMES = new Map(CHARITY_RECORDS.map((r) => [r.name, shortCharityName(r)]));
 
 /** "Sabina O." from "Sabina Okafor". Organizations keep their full name. */
 export function shortName(name: string) {
-  if (ORG_NAMES.has(name)) return name;
+  const org = ORG_NAMES.get(name);
+  if (org) return org;
   const [first, ...rest] = name.trim().split(/\s+/);
   return rest.length ? `${first} ${rest[rest.length - 1][0]}.` : first;
 }
@@ -46,7 +47,8 @@ export function Sentence({ p, size = "md" }: { p: Payment; size?: "md" | "sm" })
       {p.note && (
         <>
           {" "}
-          for <span className="font-semibold text-ink">{p.note}</span>
+          {/^for\b/i.test(p.note) ? "" : "for "}
+          <span className="font-semibold text-ink">{p.note}</span>
         </>
       )}
     </p>

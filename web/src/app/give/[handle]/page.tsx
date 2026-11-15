@@ -3,9 +3,8 @@
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useMemo, useState } from "react";
-import { ArrowUpRight, Check, ChevronLeft, Delete, FileText, Globe, Lock, ShieldCheck, ShieldAlert, X } from "lucide-react";
+import { ArrowUpRight, Check, ChevronLeft, Delete, FileText, Globe, Lock, X } from "lucide-react";
 import { META, unitsLabel, usd } from "@/lib/assets";
-import { config } from "@/lib/config";
 import { scanTxUrl } from "@/lib/chain";
 import { useRequireAccount } from "@/lib/hooks";
 import { useNow } from "@/lib/hooks";
@@ -29,7 +28,6 @@ function friendly(e: unknown) {
   return m.split("\n")[0].slice(0, 120);
 }
 
-const addrUrl = (a: string) => `${config.chainId === 143 ? "https://monadscan.com" : "https://testnet.monadscan.com"}/address/${a}`;
 
 /** Give to one charity: amount, what to give, confirm, done. One Osmo send to the charity's username. */
 function GiveFlow({ c, onClose }: { c: Charity; onClose: () => void }) {
@@ -256,7 +254,7 @@ function CharityPage() {
   const { handle } = useParams<{ handle: string }>();
   const sp = useSearchParams();
   const router = useRouter();
-  const { me, charityOf, charities, feed, canSee, prices } = useStore();
+  const { me, charityOf, charities, feed, canSee, prices, personOf } = useStore();
   const now = useNow();
   const [giving, setGiving] = useState(sp.get("give") === "1");
   const c = charityOf(handle);
@@ -273,10 +271,8 @@ function CharityPage() {
   const city = c.address.split(",").slice(-2).join(",").replace(/\s\d{5}(-\d{4})?$/, "").trim();
   const canGive = c.verified && c.detailsOk;
   const facts: [string, React.ReactNode][] = [
-    ["Legal name", c.legalName],
     ["EIN", <span key="ein" className="font-mono">{c.ein}</span>],
-    ["IRS status", `${c.status} ${c.deductible ? "public charity" : "social welfare organization"}`],
-    ["Address", c.address],
+    ["Based in", city],
     ...(c.founded ? ([["Founded", String(c.founded)]] as [string, string][]) : []),
     ["Website", <a key="w" href={`https://${c.site}`} target="_blank" rel="noreferrer" className="text-brand">{c.site}</a>],
   ];
@@ -286,36 +282,20 @@ function CharityPage() {
       <BackHeader title="" fallback="/give" />
       <div className="px-4 pb-28">
         <div className="flex flex-col items-center text-center">
-          <CharityLogo handle={c.handle} size={104} ring />
-          <h1 className="mt-4 flex items-center gap-1.5 text-[24px] font-semibold leading-tight tracking-tight">
+          <CharityLogo handle={c.handle} size={88} ring />
+          <h1 className="mt-4 flex items-center justify-center gap-1.5 text-[22px] font-semibold leading-tight tracking-tight">
             {c.name} {c.detailsOk && <VerifiedTick size={22} />}
           </h1>
-          <p className="mt-1 text-[14px] text-muted">
-            {c.category} · {city}
-          </p>
-          <div className="mt-3">
-            <TaxPill c={c} />
-          </div>
-          <p className="mt-4 text-[18px] font-medium leading-snug">{c.mission}</p>
+          <p className="mt-1 text-[14px] text-muted">{c.category}</p>
+          <p className="mt-4 text-[17px] font-medium leading-snug">{c.mission}</p>
           <p className="mt-2 text-[15px] leading-relaxed text-muted">{c.about}</p>
         </div>
 
-        <Card className={`mt-5 flex gap-3 ${c.deductible ? "" : "!bg-[#FBEFD9]"}`}>
-          {c.deductible ? <ShieldCheck size={22} className="mt-0.5 shrink-0 text-money" /> : <ShieldAlert size={22} className="mt-0.5 shrink-0 text-[#9A6412]" />}
-          <p className="text-[14px] leading-snug">
-            {c.deductible ? (
-              <>
-                <span className="font-semibold">Gifts are tax-deductible for US donors who itemize.</span> Every gift gets a receipt with the EIN, the date, and the value on the day you gave, ready for your accountant.
-              </>
-            ) : (
-              <>
-                <span className="font-semibold">Gifts are not tax-deductible.</span> {c.name} is a {c.status} advocacy group, and the IRS doesn&apos;t allow a charitable deduction for those. You still get a record of every gift.
-              </>
-            )}
-          </p>
-        </Card>
+        <p className={`mt-4 rounded-2xl px-4 py-3 text-center text-[13px] leading-snug ${c.deductible ? "bg-[#E3F2E9] text-money" : "bg-[#FBEFD9] text-[#9A6412]"}`}>
+          {c.deductible ? "Tax-deductible. You get a receipt with a PDF for every gift." : `Not tax-deductible: ${c.name} is a ${c.status} advocacy group. You still get a receipt.`}
+        </p>
 
-        <SectionTitle>Details</SectionTitle>
+        <SectionTitle>About</SectionTitle>
         <Card className="divide-y divide-line !py-1">
           {facts.map(([k, v]) => (
             <div key={k} className="flex justify-between gap-4 py-3 text-[15px]">
@@ -323,22 +303,6 @@ function CharityPage() {
               <span className="text-right font-semibold">{v}</span>
             </div>
           ))}
-          <div className="flex justify-between gap-4 py-3 text-[15px]">
-            <span className="shrink-0 text-muted">Verified</span>
-            <span className="text-right font-semibold">
-              {c.detailsOk ? (
-                <span className="text-money">Matches the record checked on Monad</span>
-              ) : (
-                <span className="text-down">Details changed since verification</span>
-              )}
-            </span>
-          </div>
-          <a href={addrUrl(c.wallet)} target="_blank" rel="noreferrer" className="flex items-center justify-between gap-4 py-3 text-[15px]">
-            <span className="shrink-0 text-muted">Testnet wallet</span>
-            <span className="flex items-center gap-1 font-mono text-[14px] font-semibold text-brand">
-              {c.wallet.slice(0, 6)}…{c.wallet.slice(-4)} <ArrowUpRight size={15} />
-            </span>
-          </a>
         </Card>
 
         <SectionTitle>Recent gifts</SectionTitle>
@@ -347,7 +311,7 @@ function CharityPage() {
             <Link key={p.id} href={`/p/${p.hash}`} className="flex items-center gap-3 border-b border-line px-4 py-3 last:border-0">
               <Avatar handle={p.from} size={36} />
               <span className="flex-1 text-[15px]">
-                <span className="font-semibold">{p.from === me.handle ? "You" : p.from}</span>
+                <span className="font-semibold">{p.from === me.handle ? "You" : shortName(personOf(p.from).name)}</span>
                 <span className="block text-[12px] text-muted">{now ? `${ago(p.time, now)} ago` : ""}</span>
               </span>
               <AssetDot symbol={p.symbol} size={22} />
@@ -361,7 +325,7 @@ function CharityPage() {
 
       <div className="fixed inset-x-0 bottom-0 z-30 mx-auto max-w-[430px] bg-gradient-to-t from-page via-page to-transparent px-4 pb-[max(env(safe-area-inset-bottom),20px)] pt-6 min-[820px]:absolute">
         <PrimaryButton disabled={!canGive} onClick={() => setGiving(true)}>
-          {canGive ? `Give to ${shortName(c.name).length > 22 ? "this charity" : c.name}` : "Not available"}
+          {canGive ? `Give to ${shortName(c.name).length > 24 ? "this charity" : shortName(c.name)}` : "Not available"}
         </PrimaryButton>
       </div>
       {giving && canGive && (
