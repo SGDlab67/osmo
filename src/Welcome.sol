@@ -56,6 +56,10 @@ contract Welcome {
     /// Display profile: "Display name|picture id|country code". Shown in the app, never verified.
     mapping(address => string) public profileOf;
     uint256 public constant MAX_PROFILE_BYTES = 120;
+    /// Hard ceiling on members. Every welcome spends MON from the float and grows the list, and the server route
+    /// that calls it is open to anyone, so a flood of fresh addresses must stop here, on chain, not in the server.
+    /// The owner may raise it.
+    uint256 public maxMembers = 500;
 
     event AssetListed(string symbol, address token);
     event Welcomed(address indexed user, uint256 gas);
@@ -74,6 +78,7 @@ contract Welcome {
     error NotMember();
     error NotYours();
     error NotOpen();
+    error RoomFull();
 
     modifier onlyOwner() {
         if (msg.sender != owner) revert NotOwner();
@@ -99,6 +104,7 @@ contract Welcome {
     /// Starter kit, gas and profile, once per wallet. Safe to call twice: the second call does nothing.
     function welcome(address user, string calldata profile) external onlyOperator {
         if (welcomed[user]) return;
+        if (members.length >= maxMembers) revert RoomFull();
         welcomed[user] = true;
         members.push(user);
         _setProfile(user, profile);
@@ -205,6 +211,10 @@ contract Welcome {
 
     function setGasGrant(uint256 amount) external onlyOwner {
         gasGrant = amount;
+    }
+
+    function setMaxMembers(uint256 n) external onlyOwner {
+        maxMembers = n;
     }
 
     function withdraw(address payable to, uint256 amount) external onlyOwner {

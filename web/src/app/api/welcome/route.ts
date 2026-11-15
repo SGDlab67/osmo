@@ -3,12 +3,14 @@ import { privateKeyToAccount } from "viem/accounts";
 import { welcomeAbi } from "@/lib/abi";
 import { config } from "@/lib/config";
 import { publicClient, walletFor } from "@/lib/chain";
+import { allow, tooMany } from "@/lib/guard";
 
 /**
  * Sign-up, server side: the app's relayer calls Welcome.welcome(address), which gives the new phone wallet its
  * starter kit and a little MON for gas, in one transaction. The relayer key never reaches the browser.
  */
 export async function POST(req: Request) {
+  if (!allow("welcome", 120)) return tooMany(); // a room of 100 fits; a flood does not
   const key = process.env.RELAYER_KEY as `0x${string}` | undefined;
   if (!key) return Response.json({ error: "The server has no RELAYER_KEY set." }, { status: 500 });
   const { address, profile = "" } = (await req.json().catch(() => ({}))) as { address?: string; profile?: string };
