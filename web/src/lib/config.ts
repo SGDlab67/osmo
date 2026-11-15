@@ -16,4 +16,8 @@ export const config = {
   welcome: (env(process.env.NEXT_PUBLIC_WELCOME) ?? deployment.welcome) as `0x${string}`,
 };
 
+/** MonadScan (Etherscan's explorer for Monad), where "View on MonadScan" links go. */
+export const monadscan =
+  env(process.env.NEXT_PUBLIC_MONADSCAN) ?? (config.chainId === 143 ? "https://monadscan.com" : "https://testnet.monadscan.com");
+
 export const isLocal = config.chainId === 31337;

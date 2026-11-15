@@ -44,8 +44,12 @@ export interface PayInput {
   requestId?: number;
 }
 
+/** live: talking to Monad. offline: the last few checks failed. missing: no Welcome contract on this network yet. */
+export type ChainStatus = "loading" | "live" | "offline" | "missing";
+
 interface Store {
   ready: boolean;
+  status: ChainStatus;
   account: PrivateKeyAccount | null;
   me: Person | null;
   tokens: Token[];
@@ -77,6 +81,9 @@ interface Store {
   react: (hash: string, emoji: string) => void;
   hideBalances: boolean;
   toggleHideBalances: () => void;
+  /** Payments to me that landed while the app was open, newest last, for the notification banner. */
+  arrivals: Payment[];
+  dismissArrival: (id: string) => void;
 }
 
 const LOCAL = "osmo.monad.local";
@@ -106,7 +113,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [feed, setFeed] = useState<Payment[]>([]);
   const [requests, setRequests] = useState<MoneyRequest[]>([]);
   const [block, setBlock] = useState<bigint | null>(null);
+  const [status, setStatus] = useState<ChainStatus>(config.welcome === ZERO ? "missing" : "loading");
+  const fails = useRef(0);
   const seen = useRef({ sends: -1, members: -1, requests: -1 });
+  const [arrivals, setArrivals] = useState<Payment[]>([]);
+  // Payment ids already on screen when this account's feed first loaded, so only new ones notify.
+  const known = useRef<{ who: string; ids: Set<string> } | null>(null);
   const [local, setLocal] = useState<Local>({ friends: {}, reactions: {}, hide: false });
   const saveLocal = useCallback((f: (l: Local) => Local) => {
     setLocal((l) => {
@@ -126,7 +138,26 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       }
       setReady(true);
     });
-    loadTokens().then(setTokens).catch(() => {});
+  }, []);
+
+  // The asset list comes from Welcome. Keep retrying until it loads: one failed request must not leave the app blank.
+  useEffect(() => {
+    if (config.welcome === ZERO) return;
+    let alive = true;
+    let wait = 1000;
+    const attempt = () =>
+      loadTokens()
+        .then((t) => alive && setTokens(t))
+        .catch(() => {
+          if (!alive) return;
+          setStatus("offline");
+          setTimeout(attempt, wait);
+          wait = Math.min(wait * 2, 8000);
+        });
+    attempt();
+    return () => {
+      alive = false;
+    };
   }, []);
 
   useEffect(() => {
@@ -174,6 +205,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           publicClient.readContract({ address: config.welcome, abi: welcomeAbi, functionName: "requestCount" }).then(Number),
         ]);
         if (!alive) return;
+        fails.current = 0;
+        setStatus("live");
         setBlock(b);
         if (memberCount !== seen.current.members) {
           seen.current.members = memberCount;
@@ -189,16 +222,32 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           if (!alive) return;
           setFeed(items);
           if (bal) setBalances(bal);
+          if (handle) {
+            if (known.current?.who !== handle) known.current = { who: handle, ids: new Set(items.map((p) => p.id)) };
+            else {
+              const fresh = items.filter((p) => !known.current!.ids.has(p.id));
+              fresh.forEach((p) => known.current!.ids.add(p.id));
+              const mine = fresh.filter((p) => p.to === handle && p.from !== handle);
+              if (mine.length) setArrivals((a) => [...a, ...mine.reverse()].slice(-5));
+            }
+          }
         }
-      } catch {}
+      } catch {
+        // One slow block or dropped request is normal; three in a row means we've lost Monad.
+        if (alive && ++fails.current >= 3) setStatus("offline");
+      }
     };
     tick();
-    const t = setInterval(tick, 1500);
+    // Check every second while the app is on screen; pause in the background and catch up on return.
+    const t = setInterval(() => document.visibilityState === "visible" && tick(), 1000);
+    const back = () => document.visibilityState === "visible" && tick();
+    document.addEventListener("visibilitychange", back);
     return () => {
       alive = false;
       clearInterval(t);
+      document.removeEventListener("visibilitychange", back);
     };
-  }, [tokens, account, loadRequests]);
+  }, [tokens, account, handle, loadRequests]);
 
   const people = useMemo(() => {
     const joined = new Set(members.map((m) => m.handle));
@@ -236,7 +285,18 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     onStep(1, Math.round(performance.now() - t), body.hash);
     const existing = await publicClient.readContract({ address: config.registry, abi: registryAbi, functionName: "nameOf", args: [acct.address] });
     if (!existing) {
-      const claim = await sendAndConfirm(acct, { address: config.registry, abi: registryAbi, functionName: "claim", args: [input.handle] });
+      // Monad can reject a brand-new wallet's first transaction for a moment after it is funded, so retry briefly.
+      let claim: Sent | null = null;
+      for (let tries = 0; !claim; tries++) {
+        try {
+          claim = await sendAndConfirm(acct, { address: config.registry, abi: registryAbi, functionName: "claim", args: [input.handle] });
+        } catch (e) {
+          const m = e instanceof Error ? e.message : "";
+          if (/NameTaken|taken/i.test(m)) throw new Error(`@${input.handle} was just taken. Try another username.`);
+          if (tries >= 8) throw e;
+          await new Promise((r) => setTimeout(r, 700));
+        }
+      }
       onStep(2, claim.ms, claim.hash);
     } else onStep(2, 0);
     saveName(input.handle);
@@ -338,6 +398,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       }),
     [handle, saveLocal],
   );
+  const dismissArrival = useCallback((id: string) => setArrivals((a) => a.filter((p) => p.id !== id)), []);
   const toggleHideBalances = useCallback(() => saveLocal((l) => ({ ...l, hide: !l.hide })), [saveLocal]);
 
   const balancesFor = useCallback((address: `0x${string}`) => balancesOf(address, tokens), [tokens]);
@@ -354,9 +415,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   }, [balances, prices]);
 
   const value: Store = {
-    ready, account, me, tokens, balances, prices, people, feed, requests, block, totalUsd, cashUsd,
+    ready, status, account, me, tokens, balances, prices, people, feed, requests, block, totalUsd, cashUsd,
     personOf, canSee, spendable, join, pay, request, closeRequest, buy, saveProfile, signOut, balancesFor,
-    friends, addFriend, removeFriend, reactions: local.reactions, react, hideBalances: local.hide, toggleHideBalances,
+    friends, addFriend, removeFriend, reactions: local.reactions, react, hideBalances: local.hide, toggleHideBalances, arrivals, dismissArrival,
   };
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

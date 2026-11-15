@@ -1,21 +1,28 @@
 import { createPublicClient, createWalletClient, defineChain, formatEther, http, type Account, type Hash } from "viem";
-import { config } from "./config";
+import { config, monadscan } from "./config";
+
+const onMonad = config.chainId === 10143 || config.chainId === 143;
 
 export const chain = defineChain({
   id: config.chainId,
   name: config.chainId === 10143 ? "Monad testnet" : "Local chain",
   nativeCurrency: { name: "MON", symbol: "MON", decimals: 18 },
   rpcUrls: { default: { http: [config.rpc] } },
+  // Multicall3 sits at its usual address on Monad testnet and mainnet; a local anvil chain doesn't have it.
+  ...(onMonad ? { contracts: { multicall3: { address: "0xcA11bde05977b3631167028862bE2a173976CA11" as const } } } : {}),
   blockExplorers: { default: { name: "Explorer", url: config.explorer } },
 });
 
-export const publicClient = createPublicClient({ chain, transport: http(config.rpc) });
+// Reads made in the same moment travel as one JSON-RPC batch, and contract reads are folded into a single
+// Multicall3 call, so a room full of phones on one Wi-Fi (one IP) stays under the public RPC's rate limit.
+export const publicClient = createPublicClient({ chain, transport: http(config.rpc, { batch: { wait: 16 } }), batch: onMonad ? { multicall: { wait: 16 } } : undefined });
 
 export function walletFor(account: Account) {
   return createWalletClient({ account, chain, transport: http(config.rpc) });
 }
 
 export const txUrl = (hash: string) => `${config.explorer}/tx/${hash}`;
+export const scanTxUrl = (hash: string) => `${monadscan}/tx/${hash}`;
 export const addressUrl = (a: string) => `${config.explorer}/address/${a}`;
 
 export interface Sent {

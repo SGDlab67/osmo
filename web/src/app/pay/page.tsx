@@ -3,10 +3,10 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useMemo, useState } from "react";
-import { Check, ChevronLeft, ChevronRight, Delete, Globe, Lock, Plus, QrCode, Search, X } from "lucide-react";
+import { ArrowUpRight, Check, ChevronLeft, ChevronRight, Delete, Globe, Lock, Plus, QrCode, Search, X } from "lucide-react";
 import { registryAbi } from "@/lib/abi";
 import { META, unitsLabel, usd } from "@/lib/assets";
-import { publicClient } from "@/lib/chain";
+import { publicClient, scanTxUrl } from "@/lib/chain";
 import { config } from "@/lib/config";
 import { useRequireAccount } from "@/lib/hooks";
 import { useStore } from "@/lib/store";
@@ -32,7 +32,9 @@ function PayPageFlow({ params }: { params: Record<string, string> }) {
   const router = useRouter();
   const { me, people, personOf, balances, prices, spendable, pay, request, feed, friends } = useStore();
   const [toPicked, setTo] = useState<string | null>(null);
-  const to = toPicked ?? params.to ?? "";
+  const rawTo = (toPicked ?? params.to ?? "").toLowerCase();
+  // You can't pay yourself; a link to your own code lands on the person picker instead.
+  const to = me && rawTo === me.handle ? "" : rawTo;
   const [query, setQuery] = useState("");
   const [amountTyped, setAmount] = useState<string | null>(null);
   const amount = amountTyped ?? (params.amount || "0");
@@ -90,7 +92,8 @@ function PayPageFlow({ params }: { params: Record<string, string> }) {
   const pickTyped = async () => {
     setError("");
     const a = await publicClient.readContract({ address: config.registry, abi: registryAbi, functionName: "resolve", args: [q] }).catch(() => null);
-    if (!a || a === "0x0000000000000000000000000000000000000000") setError(`No one has @${q} yet.`);
+    if (me && q === me.handle) setError("That's you. Pick someone else to pay.");
+    else if (!a || a === "0x0000000000000000000000000000000000000000") setError(`No one has @${q} yet.`);
     else setTo(q);
   };
 
@@ -135,7 +138,7 @@ function PayPageFlow({ params }: { params: Record<string, string> }) {
     return (
       <div className="relative flex min-h-dvh flex-col bg-white px-6 pb-8 min-[820px]:min-h-full">
         {done.kind === "paid" && <Confetti />}
-        <div className="flex flex-1 flex-col items-center justify-center text-center">
+        <div className="relative z-10 flex flex-1 flex-col items-center justify-center text-center">
           <span className="pop flex h-[72px] w-[72px] items-center justify-center rounded-full bg-money text-white">
             <Check size={36} strokeWidth={3} />
           </span>
@@ -188,9 +191,14 @@ function PayPageFlow({ params }: { params: Record<string, string> }) {
               Done
             </PrimaryButton>
             {done.kind === "paid" && (
-              <Link href={`/p/${done.hash}`} className="mt-3 flex h-11 items-center justify-center text-[15px] font-semibold text-brand">
-                See the payment
-              </Link>
+              <div className="mt-3 flex items-center justify-center gap-6">
+                <Link href={`/p/${done.hash}`} className="flex h-11 items-center text-[15px] font-semibold text-brand">
+                  See the payment
+                </Link>
+                <a href={scanTxUrl(done.hash)} target="_blank" rel="noreferrer" className="flex h-11 items-center gap-1 text-[15px] font-semibold text-brand">
+                  MonadScan <ArrowUpRight size={16} />
+                </a>
+              </div>
             )}
           </div>
         </div>

@@ -20,3 +20,6 @@ services/.state/
 
 # Local anvil deployments
 deployments/local.json
+
+# forge broadcast logs
+broadcast/

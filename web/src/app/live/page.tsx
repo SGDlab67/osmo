@@ -16,10 +16,11 @@ export default function LivePage() {
         <p className="flex items-center gap-3 text-[30px] font-bold tracking-tight">
           <Mark size={40} /> Osmo
         </p>
-        <p className="mt-3 text-[19px] leading-snug text-[#f3eee5]/80">Scan, make a username, and pay someone in this room a piece of a stock.</p>
+        <p className="mt-4 text-[24px] font-semibold leading-snug">Scan to join.</p>
+        <p className="mt-1 text-[18px] leading-snug text-[#f3eee5]/75">Make a username, get $150 of test stocks and crypto, and pay someone in this room.</p>
         <div className="mt-8 self-start rounded-[24px] bg-white p-5">{origin && <QRCodeSVG value={origin} size={264} level="M" fgColor="#0f2c4d" />}</div>
         <p className="mt-4 text-[17px] font-semibold">{origin.replace(/^https?:\/\//, "")}</p>
-        <p className="mt-auto text-[14px] text-[#f3eee5]/60">Every payment is signed on the phone and settles on Monad in under a second.</p>
+        <p className="mt-auto text-[15px] leading-snug text-[#f3eee5]/60">Every payment is signed on the phone and settles on Monad in under a second.</p>
       </aside>
       <main>
         <RoomView big />

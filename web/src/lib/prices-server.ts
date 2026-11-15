@@ -9,6 +9,14 @@ const FALLBACK: Record<string, number> = {
 };
 
 let cached: { at: number; body: Quotes } | null = null;
+/** The last answer CoinGecko actually gave, served when it rate-limits us, so prices never jump back to old fallbacks. */
+let lastGood: Quotes | null = null;
+/** Full-resolution 7-day hourly lines, for charts when CoinGecko's chart endpoint is rate-limited. */
+const fullSpark: Record<string, number[]> = {};
+
+export function sparkOf(symbol: string) {
+  return fullSpark[symbol] ?? [];
+}
 
 /** Live prices from CoinGecko, cached for a minute in memory. Dollar coins are pinned to $1. */
 export async function getQuotes(): Promise<Quotes> {
@@ -19,10 +27,16 @@ export async function getQuotes(): Promise<Quotes> {
   try {
     const res = await fetch(`https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&sparkline=true&ids=${ids}`, { cache: "no-store" });
     const rows: { id: string; current_price: number; price_change_percentage_24h: number | null; sparkline_in_7d?: { price: number[] } }[] = await res.json();
+    if (!Array.isArray(rows)) throw new Error("rate limited");
     for (const [symbol, m] of Object.entries(META)) {
       const r = rows.find((x) => x.id === m.cg);
       if (r) live = true;
+      if (r?.sparkline_in_7d?.price?.length) fullSpark[symbol] = r.sparkline_in_7d.price;
       const pinned = DOLLAR_COINS.includes(symbol);
+      if (!r && !pinned && lastGood?.[symbol]) {
+        out[symbol] = lastGood[symbol];
+        continue;
+      }
       out[symbol] = {
         price: pinned ? 1 : (r?.current_price ?? FALLBACK[symbol]),
         change: pinned ? 0 : (r?.price_change_percentage_24h ?? 0),
@@ -30,8 +44,16 @@ export async function getQuotes(): Promise<Quotes> {
       };
     }
   } catch {
+    if (lastGood) {
+      // Try again in 20 seconds rather than hammering a rate-limited API.
+      cached = { at: Date.now() - 40_000, body: lastGood };
+      return lastGood;
+    }
     for (const symbol of Object.keys(META)) out[symbol] = { price: FALLBACK[symbol], change: 0 };
   }
-  if (live) cached = { at: Date.now(), body: out };
+  if (live) {
+    cached = { at: Date.now(), body: out };
+    lastGood = out;
+  }
   return out;
 }

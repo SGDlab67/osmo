@@ -293,7 +293,7 @@ Friends, reactions and the hide-amounts switch are kept on the phone. Payments, 
 | Contract | What it does |
 | --- | --- |
 | `DemoAsset` | One test token per asset: USDC, USDT, PYUSD, DAI, EURC, NVDA, TSLA, AAPL, GOOGL, AMZN, META, MSFT, NFLX, COIN, CRCL, PAXG, XAUT, KAG, USDY, BUIDL, BTC, ETH, SOL. Deployed once and cloned (EIP-1167) for each asset so listing 23 is cheap. Mintable only by `Welcome`; `Osmo` can move it without an approval, so paying is one transaction. The price: Osmo is the one contract trusted to spend every holder's demo tokens, so a bug in Osmo would reach all of them |
-| `Welcome` | Lists the demo assets; once per wallet gives a starter kit ($25 USDC, $15 NVIDIA, $10 Tesla, $10 Bitcoin at today's prices) and MON for gas; keeps the member list, each member's profile and money requests on-chain so the app can list them without scanning logs; stops welcoming wallets at `maxMembers` (500, raised by the owner), so a flood of fresh addresses cannot drain the MON float; `grant` lets the server fill simulated Buys |
+| `Welcome` | Lists the demo assets; once per wallet gives a starter kit (about $150: $50 USDC, $40 NVIDIA, $25 Tesla, $20 Bitcoin, $15 gold at Nov 15 prices) and MON for gas; keeps the member list, each member's profile and money requests on-chain so the app can list them without scanning logs; stops welcoming wallets at `maxMembers` (500, raised by the owner), so a flood of fresh addresses cannot drain the MON float; `grant` lets the server fill simulated Buys |
 
 They deploy with everything else from `script/Deploy.s.sol` (see Run it).
 Addresses: **to be filled in after the Monad deploy.**
