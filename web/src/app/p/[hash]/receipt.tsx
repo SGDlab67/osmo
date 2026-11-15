@@ -13,6 +13,7 @@ import { useStore } from "@/lib/store";
 import { BackHeader, Screen } from "@/components/shell";
 import { AssetDot, Avatar, Card, Flag, SectionTitle } from "@/components/ui";
 import { DonationReceipt } from "@/components/donation-receipt";
+import { shortName } from "@/components/feed-card";
 
 interface R {
   from: string;
@@ -30,7 +31,7 @@ interface R {
 
 export function Receipt({ params }: { params: Promise<{ hash: string }> }) {
   const { hash } = use(params);
-  const { tokens, prices, personOf, charityOf } = useStore();
+  const { tokens, prices, personOf, charityOf, me } = useStore();
   const [r, setR] = useState<R | null>(null);
   const [copied, setCopied] = useState(false);
   const [missing, setMissing] = useState<"" | "notfound" | "notpayment">("");
@@ -137,6 +138,9 @@ export function Receipt({ params }: { params: Promise<{ hash: string }> }) {
     );
   const value = r.units * (prices[r.symbol]?.price ?? 0);
   const org = charityOf(r.to);
+  // A gift is public like any payment, but its receipt (and the PDF with the donor's details) is only for the donor.
+  const mine = !!me && me.handle === r.from;
+  const ownReceipt = !!org && mine;
   const rows: [string, string][] = [
     ["Status", "Settled"],
     [
@@ -183,11 +187,11 @@ export function Receipt({ params }: { params: Promise<{ hash: string }> }) {
               </>
             )}
           </p>
-          {!org && (
-<p className="tabular mt-2 flex items-center gap-2 text-[40px] font-semibold tracking-tight">
-            <AssetDot symbol={r.symbol} size={36} /> {usd(value)}
-          </p>
-)}
+          {!ownReceipt && (
+            <p className="tabular mt-2 flex items-center gap-2 text-[40px] font-semibold tracking-tight">
+              <AssetDot symbol={r.symbol} size={36} /> {usd(value)}
+            </p>
+          )}
           {r.note && <p className="mt-1 text-[17px]">{r.note}</p>}
           {r.isPrivate && (
             <p className="mt-1 text-[13px] text-muted">
@@ -195,7 +199,15 @@ export function Receipt({ params }: { params: Promise<{ hash: string }> }) {
             </p>
           )}
         </div>
-        {org && (
+        {org && !mine && (
+          <Link
+            href={`/give/${org.handle}?give=1`}
+            className="mt-5 flex h-12 items-center justify-center rounded-full bg-brand text-[16px] font-semibold text-white"
+          >
+            Give to {shortName(org.name)} too
+          </Link>
+        )}
+        {ownReceipt && (
           <DonationReceipt
             c={org}
             g={{
@@ -211,7 +223,7 @@ export function Receipt({ params }: { params: Promise<{ hash: string }> }) {
             }}
           />
         )}
-        {!org && (
+        {!ownReceipt && (
           <>
             <SectionTitle>Transaction details</SectionTitle>
             <Card className="divide-y divide-line !py-1">
