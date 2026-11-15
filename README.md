@@ -133,6 +133,46 @@ Orders are for tokens only. The interval is a fixed number of seconds.
 Whoever holds the link can claim it, so it should be shared like cash:
 only with the person it is for.
 
+## Give: donations to verified nonprofits
+
+Tap the heart on Home (or "Give to a cause") to give any asset you hold to one of 20 US nonprofits, from St. Jude and the
+Red Cross to Coin Center and Stand With Crypto. The charity gets exactly the asset you pick, and every gift comes with a
+receipt for your accountant.
+
+```
+Charities.sol                 curated registry: wallet + metaHash per verified nonprofit
+web/src/data/charities.json   legal name, EIN, address, IRS status, mission (the hashed record)
+Osmo.sendToken(handle, ...)   the gift itself, unchanged: Sent is the donation record
+/api/state                    gains `charities`, rebuilt once a second like the rest
+/api/fmv                      USD value of an asset at a past moment (CoinGecko), for receipts
+/api/donations                one donor's gifts to listed charities, for the year-end summary
+/give, /give/[handle], /give/summary, and a receipt section on /p/[hash]
+```
+
+- **Trust model.** A curator (the wallet that owns `Welcome`) checks each organization's EIN against IRS records and
+  lists its wallet in `Charities` with `metaHash`, the keccak256 of `JSON.stringify(record)`. The app re-hashes the record
+  it ships and shows "Verified" only when the hash matches; an edited record shows "Details changed since verification"
+  and can't receive gifts. `Charities` never holds or moves money, and `revoke` hides a charity without erasing history.
+- **The receipt** (on every gift's payment page): the charity's legal name, EIN, IRS status and address; date and time in
+  UTC; the asset and amount; the fair market value at the moment of the gift (the real asset's CoinGecko price nearest the
+  block time, dollar coins at $1), with source and as-of time; "no goods or services were provided"; a receipt id
+  (keccak256 of tx hash and log index); the network, block, transaction and both wallets for an audit; and the donor's
+  name and address, typed on the phone and never uploaded. It flags what US donors need: digital assets (stablecoins too)
+  are non-cash property gifts, $250+ needs the charity's own acknowledgment, $500+ goes on Form 8283, $5,000+ generally
+  needs a qualified appraisal. Gifts to 501(c)(4) groups (Stand With Crypto) are marked not deductible. Save as PDF prints
+  just the receipt.
+- **The year-end summary** (`/give/summary`) groups a year's gifts by organization with subtotals, the potentially
+  deductible total (501(c)(3) only), each gift linked to its receipt, a PDF and a CSV for an accountant.
+- **Honest limits.** The organizations, EINs and addresses are real (IRS records via ProPublica Nonprofit Explorer) and
+  so are their logos, but Osmo isn't affiliated with any of them. On Monad testnet each charity's wallet is a stand-in,
+  its key derived from the public string `osmo-charity:<handle>`, so no gift reaches the real charity, and receipts say
+  "Testnet demo. Not a tax document." A real launch needs a wallet each charity (or a custodian or donor-advised fund
+  partner) controls, and the charity's own acknowledgment. Nothing here is tax advice.
+
+Run it: deploy with `script/DeployCharities.s.sol` (see the header), then `cd web && npm run contracts` and
+`CURATOR_KEY=0x... npm run seed:charities` (idempotent; funds each charity wallet just enough to claim its username, then
+lists all of them in one `addMany`).
+
 ## Deployed addresses
 
 Monad testnet, chain ID 10143. The whole app was deployed together on
@@ -144,6 +184,7 @@ the 23 demo assets.
 | `Osmo` | [`0x7cBb7B49C8289b9765ca2B9307F44392AFE34E3c`](https://testnet.monadscan.com/address/0x7cBb7B49C8289b9765ca2B9307F44392AFE34E3c) |
 | `UsernameRegistry` | [`0x5f24BE3dc850B14E71009b0E2e70f8d5614c483a`](https://testnet.monadscan.com/address/0x5f24BE3dc850B14E71009b0E2e70f8d5614c483a) |
 | `Welcome` | [`0x720f70aAffE325728cFb1f493A2C39e15dD2bC3f`](https://testnet.monadscan.com/address/0x720f70aAffE325728cFb1f493A2C39e15dD2bC3f) |
+| `Charities` (20 nonprofits listed) | [`0xD74718C8470FA90516042A9FF45Be7A9F133D6c0`](https://testnet.monadscan.com/address/0xD74718C8470FA90516042A9FF45Be7A9F133D6c0) |
 | `DemoAsset` NVDA (one of 23) | [`0xc33a5b725261677B9a6508B31a44F7c122965a64`](https://testnet.monadscan.com/address/0xc33a5b725261677B9a6508B31a44F7c122965a64) |
 
 Every address, including all 23 demo assets, is in `deployments/monad-testnet.json`.
