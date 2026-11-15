@@ -50,7 +50,7 @@ export default function GivePage() {
 
   return (
     <Screen tabs={false}>
-      <BackHeader title="Give" />
+      <BackHeader title="Give" fallback="/" />
       <div className="px-4 pb-4">
         {featured && !term && cat === "All" && (
           <div className="fade-up overflow-hidden rounded-[28px] bg-[#0F2C4D] p-5 text-[#F3EEE5]">

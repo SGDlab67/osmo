@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { ChartLine, ChevronLeft, House, QrCode, Search, Users, HeartHandshake } from "lucide-react";
-import type { ReactNode } from "react";
+import { useEffect, type ReactNode } from "react";
 import { useStore } from "@/lib/store";
 import { Avatar, Mark } from "./ui";
 
@@ -86,11 +86,20 @@ export function SearchBar({ placeholder = "Find a person", give = false }: { pla
   );
 }
 
+/** How many screens deep this visit is. Opening a shared link starts at 1, so Back goes to the parent, not off-site. */
+let depth = 0;
+export function useTrackDepth() {
+  const path = usePathname();
+  useEffect(() => {
+    depth += 1;
+  }, [path]);
+}
+
 export function BackHeader({ title, right, fallback = "/" }: { title?: string; right?: ReactNode; fallback?: string }) {
   const router = useRouter();
   return (
     <div className="sticky top-0 z-30 flex h-14 items-center justify-between bg-page/95 px-3 backdrop-blur">
-      <button type="button" aria-label="Back" onClick={() => (history.length > 1 ? router.back() : router.push(fallback))} className="flex h-10 w-10 items-center justify-center rounded-full bg-white">
+      <button type="button" aria-label="Back" onClick={() => (depth > 1 ? router.back() : router.replace(fallback))} className="flex h-10 w-10 items-center justify-center rounded-full bg-white">
         <ChevronLeft size={22} />
       </button>
       <span className="text-[17px] font-semibold">{title}</span>

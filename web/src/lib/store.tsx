@@ -68,7 +68,7 @@ interface Store {
   request: (from: string[], usdEach: number, note: string) => Promise<void>;
   closeRequest: (id: number, status: "paid" | "declined" | "cancelled") => Promise<void>;
   buy: (symbol: string, usd: number) => Promise<{ units: number; hash: string; ms: number }>;
-  saveProfile: (name: string, picture: string, country: string) => Promise<void>;
+  saveProfile: (name: string, picture: string, country: string, privatePortfolio?: boolean) => Promise<void>;
   signOut: () => void;
   /** Log in on this phone with a username and a number from 1 to 9999. Throws a readable message on failure. */
   signIn: (handle: string, password: string) => Promise<void>;
@@ -337,12 +337,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   );
 
   const saveProfile = useCallback(
-    async (name: string, picture: string, country: string) => {
+    async (name: string, picture: string, country: string, privatePortfolio?: boolean) => {
       if (!account) return;
-      await sendAndConfirm(account, { address: config.welcome, abi: welcomeAbi, functionName: "setProfile", args: [encodeProfile(name, picture, country)] });
+      // Keep the portfolio setting unless the caller changes it.
+      const keepPrivate = privatePortfolio ?? Boolean(me?.privatePortfolio);
+      await sendAndConfirm(account, { address: config.welcome, abi: welcomeAbi, functionName: "setProfile", args: [encodeProfile(name, picture, country, keepPrivate)] });
       await sync.current(true);
     },
-    [account],
+    [account, me],
   );
 
   const signIn = useCallback(async (user: string, password: string) => {

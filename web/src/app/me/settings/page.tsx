@@ -26,6 +26,9 @@ export default function SettingsPage() {
   const [number, setNumber] = useState("");
   const [again, setAgain] = useState("");
   const [numberError, setNumberError] = useState("");
+  const [savingPrivacy, setSavingPrivacy] = useState(false);
+  const [privacyError, setPrivacyError] = useState("");
+  const portfolioPrivate = Boolean(me?.privatePortfolio);
   const myHandle = me?.handle;
   useEffect(() => {
     if (!myHandle) return;
@@ -58,15 +61,45 @@ export default function SettingsPage() {
         </Card>
 
         <SectionTitle>Privacy</SectionTitle>
-        <Card className="!py-1">
+        <Card className="divide-y divide-line !py-1">
+          <button
+            type="button"
+            disabled={savingPrivacy}
+            onClick={async () => {
+              setSavingPrivacy(true);
+              setPrivacyError("");
+              try {
+                await saveProfile(me.name, me.picture, me.country, !portfolioPrivate);
+              } catch (e) {
+                setPrivacyError(e instanceof Error ? e.message.split("\n")[0] : "Couldn't save. Try again.");
+              } finally {
+                setSavingPrivacy(false);
+              }
+            }}
+            className={`${row} disabled:opacity-60`}
+          >
+            <span>
+              Show my portfolio on my profile
+              <span className="block text-[13px] font-normal text-muted">
+                {savingPrivacy ? "Saving on Monad…" : portfolioPrivate ? "Hidden. People see \"keeps their portfolio private\"." : "Anyone who opens your profile sees what you hold."}
+              </span>
+            </span>
+            <span className={`flex h-7 w-12 shrink-0 items-center rounded-full p-0.5 ${!portfolioPrivate ? "bg-brand" : "bg-line"}`}>
+              <span className={`h-6 w-6 rounded-full bg-white shadow transition-transform ${!portfolioPrivate ? "translate-x-5" : ""}`} />
+            </span>
+          </button>
           <button type="button" onClick={toggleHideBalances} className={row}>
-            Hide amounts on this phone
-            <span className={`flex h-7 w-12 items-center rounded-full p-0.5 ${hideBalances ? "bg-brand" : "bg-line"}`}>
+            <span>
+              Hide amounts on this phone
+              <span className="block text-[13px] font-normal text-muted">Covers your balances with dots on this screen only.</span>
+            </span>
+            <span className={`flex h-7 w-12 shrink-0 items-center rounded-full p-0.5 ${hideBalances ? "bg-brand" : "bg-line"}`}>
               <span className={`h-6 w-6 rounded-full bg-white shadow transition-transform ${hideBalances ? "translate-x-5" : ""}`} />
             </span>
           </button>
         </Card>
-        <p className="px-3 pt-2 text-[12px] leading-relaxed text-muted">Private payments are hidden in the app. Your wallet and its payments are still public on Monad, like any blockchain.</p>
+        {privacyError && <p className="px-3 pt-2 text-[13px] text-down">{privacyError}</p>}
+        <p className="px-3 pt-2 text-[12px] leading-relaxed text-muted">Private payments and a hidden portfolio are hidden in the app. Your wallet and its balances are still public on Monad, like any blockchain.</p>
 
         {login?.ready && (
           <>

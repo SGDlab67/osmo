@@ -23,6 +23,8 @@ export interface Person {
   country: string;
   joined: boolean;
   tag?: string;
+  /** Chose to keep their portfolio off their profile. Stored in the on-chain profile, so every phone respects it. */
+  privatePortfolio?: boolean;
 }
 
 export const EVENT_TAG = "Monad Blitz Oregon";
@@ -96,14 +98,19 @@ export const EVENT_PEOPLE: [string, string][] = [
   ["parker_myers", "Parker Myers"]
 ];
 
-/** Profiles are stored on-chain as "Display name|picture|country". */
-export function encodeProfile(name: string, picture: string, country: string) {
-  return [name.replace(/\|/g, " ").trim().slice(0, 40), picture, country].join("|");
+/**
+ * Profiles are stored on-chain as "Display name|picture|country", plus "|p" when the portfolio is private.
+ * Older profiles have no fourth field and read as public.
+ */
+export function encodeProfile(name: string, picture: string, country: string, privatePortfolio = false) {
+  const parts = [name.replace(/\|/g, " ").trim().slice(0, 40), picture, country];
+  if (privatePortfolio) parts.push("p");
+  return parts.join("|");
 }
 
 export function decodeProfile(s: string) {
-  const [name = "", picture = "", country = ""] = s.split("|");
-  return { name, picture, country };
+  const [name = "", picture = "", country = "", flags = ""] = s.split("|");
+  return { name, picture, country, privatePortfolio: flags.includes("p") };
 }
 
 /** A picture for anyone who hasn't picked one, chosen from their username so it never changes. */
@@ -126,7 +133,7 @@ export async function loadMembers(): Promise<Person[]> {
       ]);
       const p = decodeProfile(profile);
       const h = handle.toLowerCase();
-      return { address, handle: h, name: p.name || handle, picture: p.picture || defaultPicture(h), country: p.country, joined: true };
+      return { address, handle: h, name: p.name || handle, picture: p.picture || defaultPicture(h), country: p.country, joined: true, privatePortfolio: p.privatePortfolio };
     }),
   );
   return rows.filter((r) => r.handle);

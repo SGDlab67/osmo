@@ -82,7 +82,7 @@ export default function MePage() {
           <span className="flex-1">
             <span className="block text-[15px] font-semibold">Your profile</span>
             <span className="block text-[13px] text-muted">
-              Visible to everyone ·{" "}
+              {me.privatePortfolio ? "Portfolio hidden" : "Visible to everyone"} ·{" "}
               <Link href="/me/settings" className="hit font-semibold text-brand">
                 Edit
               </Link>

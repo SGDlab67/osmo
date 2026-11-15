@@ -2,14 +2,20 @@
 
 import { QRCodeSVG } from "qrcode.react";
 import type { ReactNode } from "react";
-import { useSyncExternalStore } from "react";
+import { Suspense, useSyncExternalStore } from "react";
 import { ArrivalBanner } from "./arrival-banner";
 import { ChainStatus } from "./chain-status";
+import { useTrackDepth } from "./shell";
 import { Mark } from "./ui";
 
 const noSub = () => () => {};
 
 /** Phone-sized frame on a computer, with a QR code to open the same app on a phone. */
+function DepthTracker() {
+  useTrackDepth();
+  return null;
+}
+
 export function Frame({ children }: { children: ReactNode }) {
   const origin = useSyncExternalStore(noSub, () => window.location.origin, () => "");
   const local = /localhost|127\.0\.0\.1/.test(origin);
@@ -18,6 +24,9 @@ export function Frame({ children }: { children: ReactNode }) {
   return (
     <div className="stage">
       <div className="frame">
+        <Suspense fallback={null}>
+          <DepthTracker />
+        </Suspense>
         <ChainStatus />
         <ArrivalBanner />
         <div className="frame-scroll" id="scroller">

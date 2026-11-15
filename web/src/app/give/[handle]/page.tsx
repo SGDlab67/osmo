@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { ArrowUpRight, Check, ChevronLeft, Delete, FileText, Globe, Lock, X } from "lucide-react";
 import { META, unitsLabel, usd } from "@/lib/assets";
 import { scanTxUrl } from "@/lib/chain";
@@ -24,7 +24,7 @@ type Done = { ms: number; hash: string; units: number; symbol: string; usd: numb
 function friendly(e: unknown) {
   const m = e instanceof Error ? e.message : String(e);
   if (m.includes("InsufficientBalance")) return "Not enough of that asset.";
-  if (m.toLowerCase().includes("insufficient funds")) return "This wallet is out of MON for gas.";
+  if (/insufficient (funds|balance)|missing or invalid parameters/i.test(m)) return "Your wallet needed more MON for gas. We just topped it up: tap again.";
   return m.split("\n")[0].slice(0, 120);
 }
 
@@ -105,12 +105,25 @@ function GiveFlow({ c, onClose }: { c: Charity; onClose: () => void }) {
           </p>
           <p className="mt-0.5 text-[12px] text-muted">Network fee {done.feeMon.toFixed(4)} MON, under 1¢</p>
           <div className="mt-8 w-full">
-            <PrimaryButton href={`/p/${done.hash}#receipt`}>
-              <FileText size={19} className="mr-2" /> See your receipt
+            <PrimaryButton
+              onClick={() => {
+                onClose();
+                router.push("/");
+              }}
+            >
+              Done
             </PrimaryButton>
             <div className="mt-3 flex items-center justify-center gap-6">
-              <button type="button" onClick={() => router.push("/give")} className="flex h-11 items-center text-[15px] font-semibold text-brand">
-                Done
+              <button
+                type="button"
+                onClick={() => {
+                  // Close the flow before leaving, so Back from the receipt lands on the charity page, not mid-flow.
+                  onClose();
+                  router.push(`/p/${done.hash}#receipt`);
+                }}
+                className="flex h-11 items-center gap-1.5 text-[15px] font-semibold text-brand"
+              >
+                <FileText size={16} /> See your receipt
               </button>
               <a href={scanTxUrl(done.hash)} target="_blank" rel="noreferrer" className="flex h-11 items-center gap-1 text-[15px] font-semibold text-brand">
                 MonadScan <ArrowUpRight size={16} />
@@ -257,6 +270,10 @@ function CharityPage() {
   const { me, charityOf, charities, feed, canSee, prices, personOf } = useStore();
   const now = useNow();
   const [giving, setGiving] = useState(sp.get("give") === "1");
+  // "?give=1" opens the flow once; the address bar goes back to the plain charity page so Back never reopens it.
+  useEffect(() => {
+    if (sp.get("give") === "1") router.replace(`/give/${handle}`, { scroll: false });
+  }, [sp, router, handle]);
   const c = charityOf(handle);
   if (!ok || !me) return <Screen tabs={false}>{null}</Screen>;
   if (!c)
@@ -331,10 +348,7 @@ function CharityPage() {
       {giving && canGive && (
         <GiveFlow
           c={c}
-          onClose={() => {
-            setGiving(false);
-            if (sp.get("give")) router.replace(`/give/${c.handle}`);
-          }}
+          onClose={() => setGiving(false)}
         />
       )}
     </Screen>

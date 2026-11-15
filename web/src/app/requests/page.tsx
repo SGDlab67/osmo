@@ -9,7 +9,7 @@ export default function RequestsPage() {
   if (!ok) return null;
   return (
     <Screen tabs={false}>
-      <BackHeader title="Requests" />
+      <BackHeader title="Requests" fallback="/" />
       <div className="px-4 pb-10 pt-2">
         <RequestCards showEmpty />
       </div>

@@ -23,7 +23,7 @@ function friendly(e: unknown) {
   const m = e instanceof Error ? e.message : String(e);
   if (m.includes("NoSuchName")) return "No one has that username yet.";
   if (m.includes("InsufficientBalance")) return "Not enough of that asset.";
-  if (m.toLowerCase().includes("insufficient funds")) return "This wallet is out of MON for gas.";
+  if (/insufficient (funds|balance)|missing or invalid parameters/i.test(m)) return "Your wallet needed more MON for gas. We just topped it up: tap again.";
   return m.split("\n")[0].slice(0, 120);
 }
 
@@ -192,9 +192,17 @@ function PayPageFlow({ params }: { params: Record<string, string> }) {
             </PrimaryButton>
             {done.kind === "paid" && (
               <div className="mt-3 flex items-center justify-center gap-6">
-                <Link href={`/p/${done.hash}`} className="flex h-11 items-center text-[15px] font-semibold text-brand">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const h = done.hash;
+                    reset();
+                    router.push(`/p/${h}`);
+                  }}
+                  className="flex h-11 items-center text-[15px] font-semibold text-brand"
+                >
                   See the payment
-                </Link>
+                </button>
                 <a href={scanTxUrl(done.hash)} target="_blank" rel="noreferrer" className="flex h-11 items-center gap-1 text-[15px] font-semibold text-brand">
                   MonadScan <ArrowUpRight size={16} />
                 </a>
