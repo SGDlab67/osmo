@@ -13,3 +13,7 @@ docs/
 # Dotenv file
 .env
 demo/demo-keys.js
+
+# Services
+services/node_modules/
+services/.state/

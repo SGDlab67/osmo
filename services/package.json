@@ -1,0 +1,14 @@
+{
+  "name": "osmo-services",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "test": "node --test"
+  },
+  "dependencies": {
+    "ethers": "6.17.0"
+  }
+}
