@@ -1,7 +1,8 @@
-// Username + number login. Server side only (node:crypto).
+// Username + password login. Server side only (node:crypto).
 //
-// The number is 1 to 9999, so there are only 10,000 of them. Anything an attacker can test offline falls in
-// milliseconds, so the number is only ever checked by this server, which counts guesses in a shared store:
+// Passwords are whatever the person picks (4 to 64 characters), and early accounts used a number from 1 to 9999.
+// Short secrets fall offline in milliseconds, so the secret is only ever checked by this server, which counts
+// guesses in a shared store:
 //   - the wallet key is sealed with AES-256-GCM under a key made from (server secret, username, number) by scrypt;
 //     a wrong number fails the GCM check, so there is no separate "pin hash" to attack;
 //   - the sealed blob alone is useless without the server secret;
@@ -35,6 +36,29 @@ export function parsePin(v: unknown): number | null {
   return n >= 1 && n <= 9999 ? n : null;
 }
 
+/** Never accepted as a new password. The username and the username reversed are refused too. */
+export const DENYLIST = ["1234", "0000", "1111", "4321", "123456", "password", "qwerty", "osmo", "letmein"];
+
+/** A password as typed: NFKC-normalized, 4 to 64 code points, no control characters. Anything else is null. */
+export function parsePassword(v: unknown): string | null {
+  if (typeof v !== "string") return null;
+  const s = v.normalize("NFKC");
+  const n = [...s].length;
+  if (n < 4 || n > 64) return null;
+  if (/[\u0000-\u001f\u007f]/.test(s)) return null;
+  return s;
+}
+
+/**
+ * The exact text a secret is sealed with. A number (or 1 to 4 digits) is the old login number, written the way old
+ * records were sealed (`0042` becomes `42`), so those accounts keep working. Everything else is a password.
+ */
+export function canonicalSecret(v: unknown): string | null {
+  const pin = parsePin(v);
+  if (pin !== null) return String(pin);
+  return parsePassword(v);
+}
+
 /** The server secret, derived so no second secret has to be stored. */
 export const masterOf = (relayerKey: string) => createHmac("sha256", relayerKey).update("osmo/pin-wrap/v1").digest();
 
@@ -46,12 +70,12 @@ interface Sealed {
   ct: string;
 }
 
-const kek = (master: Buffer, handle: string, pin: number, salt: Buffer) =>
+const kek = (master: Buffer, handle: string, secret: string | number, salt: Buffer) =>
   new Promise<Buffer>((res, rej) =>
-    scrypt(Buffer.concat([master, Buffer.from(`${handle}:${pin}`)]), salt, 32, { N: 2 ** 14, r: 8, p: 1 }, (e, k) => (e ? rej(e) : res(k))),
+    scrypt(Buffer.concat([master, Buffer.from(`${handle}:${secret}`, "utf8")]), salt, 32, { N: 2 ** 14, r: 8, p: 1 }, (e, k) => (e ? rej(e) : res(k))),
   );
 
-export async function seal(master: Buffer, handle: string, pin: number, key: string, address: string): Promise<Sealed> {
+export async function seal(master: Buffer, handle: string, pin: string | number, key: string, address: string): Promise<Sealed> {
   const salt = randomBytes(16);
   const iv = randomBytes(12);
   const c = createCipheriv("aes-256-gcm", await kek(master, handle, pin, salt), iv);
@@ -60,8 +84,8 @@ export async function seal(master: Buffer, handle: string, pin: number, key: str
   return { address, salt: salt.toString("hex"), iv: iv.toString("hex"), tag: c.getAuthTag().toString("hex"), ct: ct.toString("hex") };
 }
 
-/** The wallet key, or null when the number is wrong. */
-export async function open(master: Buffer, handle: string, pin: number, s: Sealed): Promise<string | null> {
+/** The wallet key, or null when the password is wrong. */
+export async function open(master: Buffer, handle: string, pin: string | number, s: Sealed): Promise<string | null> {
   try {
     const d = createDecipheriv("aes-256-gcm", await kek(master, handle, pin, Buffer.from(s.salt, "hex")), Buffer.from(s.iv, "hex"));
     d.setAAD(Buffer.from(handle));
@@ -76,21 +100,25 @@ export type Out<T> = ({ ok: true } & T) | { ok: false; status: number; error: st
 const fail = (status: number, error: string, retryAfter?: number): { ok: false; status: number; error: string; retryAfter?: number } => ({ ok: false, status, error, retryAfter });
 const mins = (s: number) => Math.max(1, Math.ceil(s / 60));
 
-/** Save (or change) the number for a username. Proof of ownership is holding the wallet that owns the name. */
-export async function savePin(a: {
+/** Save (or change) the password for a username. Proof of ownership is holding the wallet that owns the name. */
+export async function savePassword(a: {
   kv: Kv;
   master: Buffer;
   handle: unknown;
   key: unknown;
-  pin: unknown;
+  /** The password (or an old-style number). `pin` is the name older clients send. */
+  password?: unknown;
+  pin?: unknown;
   /** The address that owns this username on chain, and the address a key belongs to. */
   ownerOf: (handle: string) => Promise<string>;
   addressOf: (key: string) => string;
 }): Promise<Out<object>> {
   const handle = typeof a.handle === "string" ? a.handle.toLowerCase() : "";
-  const pin = parsePin(a.pin);
+  const pin = canonicalSecret(a.password ?? a.pin);
   if (!HANDLE.test(handle)) return fail(400, "Pick a username of 3 to 20 letters, numbers or underscores.");
-  if (pin === null) return fail(400, "The number must be between 1 and 9999.");
+  if (pin === null) return fail(400, "Use a password of 4 to 64 characters.");
+  const lower = pin.toLowerCase();
+  if (DENYLIST.includes(lower) || lower === handle || lower === [...handle].reverse().join("")) return fail(400, "That password is too easy to guess. Pick another.");
   if (typeof a.key !== "string" || !KEY.test(a.key)) return fail(400, "No wallet to protect on this phone.");
   const address = a.addressOf(a.key);
   if ((await a.ownerOf(handle)).toLowerCase() !== address.toLowerCase()) return fail(403, `This wallet does not own @${handle}.`);
@@ -98,11 +126,14 @@ export async function savePin(a: {
   return { ok: true };
 }
 
-/** Check a username and number. Every attempt counts before it is checked. */
-export async function attemptLogin(a: { kv: Kv; master: Buffer; handle: unknown; pin: unknown; ip: string }): Promise<Out<{ key: string; address: string; handle: string }>> {
+/** The old name, kept so existing callers and tests keep working. */
+export const savePin = savePassword;
+
+/** Check a username and password. Every attempt counts before it is checked. */
+export async function attemptLogin(a: { kv: Kv; master: Buffer; handle: unknown; password?: unknown; pin?: unknown; ip: string }): Promise<Out<{ key: string; address: string; handle: string }>> {
   const handle = typeof a.handle === "string" ? a.handle.toLowerCase() : "";
-  const pin = parsePin(a.pin);
-  if (!HANDLE.test(handle) || pin === null) return fail(400, "Enter your username and a number from 1 to 9999.");
+  const pin = canonicalSecret(a.password ?? a.pin);
+  if (!HANDLE.test(handle) || pin === null) return fail(400, "Enter your username and password.");
 
   const [fromIp, ipLeft] = await a.kv.hit(`ip:${a.ip}`, WINDOW_SEC);
   if (fromIp > IP_MAX) return fail(429, `Too many tries from this network. Try again in ${mins(ipLeft)} min.`, ipLeft);
@@ -111,7 +142,7 @@ export async function attemptLogin(a: { kv: Kv; master: Buffer; handle: unknown;
 
   const raw = await a.kv.get(`acct:${handle}`);
   const key = raw ? await open(a.master, handle, pin, JSON.parse(raw) as Sealed) : null;
-  if (!key) return fail(401, `Wrong username or number. ${MAX_TRIES - tries} ${MAX_TRIES - tries === 1 ? "try" : "tries"} left.`);
+  if (!key) return fail(401, `Wrong username or password. ${MAX_TRIES - tries} ${MAX_TRIES - tries === 1 ? "try" : "tries"} left.`);
 
   await a.kv.del(`tries:${handle}`);
   return { ok: true, key, address: (JSON.parse(raw!) as Sealed).address, handle };
