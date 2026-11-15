@@ -49,6 +49,10 @@ jobs:
         working-directory: web
         run: npm run contracts -- --check
 
+      - name: Test the login lock
+        working-directory: web
+        run: npm test
+
       - name: Lint the app
         working-directory: web
         run: npm run lint
