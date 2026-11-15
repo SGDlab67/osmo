@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { use, useEffect, useState } from "react";
-import { Check, UserPlus } from "lucide-react";
+import { Check, Lock, UserPlus } from "lucide-react";
 import { countryName } from "@/lib/countries";
 import { addressUrl } from "@/lib/chain";
 import { useStore } from "@/lib/store";
@@ -13,18 +13,20 @@ import { Avatar, Card, Flag, GhostButton, PrimaryButton, SectionTitle, Sheet } f
 
 export function ProfileScreen({ params }: { params: Promise<{ handle: string }> }) {
   const { handle } = use(params);
-  const { personOf, me, feed, canSee, balancesFor, tokens, friends, addFriend, removeFriend } = useStore();
+  const { personOf, me, feed, canSee, balancesFor, tokens, friends, addFriend, removeFriend, hideBalances } = useStore();
   const person = personOf(handle);
   const [bal, setBal] = useState<Record<string, number> | null>(null);
   const [removing, setRemoving] = useState(false);
   const isMe = me?.handle === handle;
   const known = person.address !== "0x0000000000000000000000000000000000000000";
   const first = person.name.split(" ")[0];
+  // A private portfolio is never fetched or shown to anyone else; its owner still sees it, marked as hidden.
+  const hidden = Boolean(person.privatePortfolio) && !isMe;
 
   useEffect(() => {
-    if (!known || tokens.length === 0) return;
+    if (!known || tokens.length === 0 || hidden) return;
     balancesFor(person.address).then(setBal).catch(() => {});
-  }, [known, person.address, tokens, balancesFor, feed.length]);
+  }, [known, person.address, tokens, balancesFor, feed.length, hidden]);
 
   const between = feed.filter((p) => me && ((p.from === me.handle && p.to === handle) || (p.from === handle && p.to === me.handle)));
   const theirs = feed.filter((p) => canSee(p) && (p.from === handle || p.to === handle) && !between.includes(p)).slice(0, 5);
@@ -71,10 +73,37 @@ export function ProfileScreen({ params }: { params: Promise<{ handle: string }> 
           </div>
         )}
 
-        {known && (
+        {known && hidden && (
           <>
-            <SectionTitle>{isMe ? "Your portfolio, as others see it" : `${first}'s portfolio`}</SectionTitle>
-            {bal ? <PublicPortfolio balances={bal} self={isMe} /> : <Card className="h-[150px] animate-pulse">{null}</Card>}
+            <SectionTitle>{`${first}'s portfolio`}</SectionTitle>
+            <Card className="flex items-center gap-3">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-chip">
+                <Lock size={18} />
+              </span>
+              <p className="text-[15px] text-muted">{first} keeps their portfolio private.</p>
+            </Card>
+          </>
+        )}
+        {known && !hidden && (
+          <>
+            <SectionTitle
+              right={
+                isMe ? (
+                  <Link href="/me/settings" className="hit text-[13px] font-semibold text-brand">
+                    {person.privatePortfolio ? "Hidden from others" : "Visible to everyone"}
+                  </Link>
+                ) : undefined
+              }
+            >
+              {isMe ? (person.privatePortfolio ? "Your portfolio (only you see this)" : "Your portfolio, as others see it") : `${first}'s portfolio`}
+            </SectionTitle>
+            {isMe && hideBalances ? (
+              <Card className="text-[15px] text-muted">Amounts are hidden on this phone.</Card>
+            ) : bal ? (
+              <PublicPortfolio balances={bal} self={isMe} />
+            ) : (
+              <Card className="h-[150px] animate-pulse">{null}</Card>
+            )}
           </>
         )}
 
