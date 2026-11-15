@@ -112,7 +112,7 @@ The limits are in the contract, not in the prompt.
 | It can only reach a claimed name | The name is resolved when the order is written |
 | It pays once per period at most | `runOrder` reverts with `NotDue` until the next slot |
 | A period nobody triggered is skipped, never paid twice later | `nextAt` jumps to the next future slot |
-| You can stop it without touching the order | Lower the token allowance and `runOrder` reverts |
+| You can stop it | Cancel it. For ordinary tokens, lowering the allowance also makes `runOrder` revert; the phone app's demo tokens give Osmo an unlimited allowance, so there only cancelling stops it |
 
 Orders are for tokens only. The interval is a fixed number of seconds.
 
@@ -261,8 +261,8 @@ Friends, reactions and the hide-amounts switch are kept on the phone. Payments, 
 
 | Contract | What it does |
 | --- | --- |
-| `DemoAsset` | One test token per asset: USDC, USDT, PYUSD, DAI, EURC, NVDA, TSLA, AAPL, GOOGL, AMZN, META, MSFT, NFLX, COIN, CRCL, PAXG, XAUT, KAG, USDY, BUIDL, BTC, ETH, SOL. Deployed once and cloned (EIP-1167) for each asset so listing 23 is cheap. Mintable only by `Welcome`; `Osmo` can move it without an approval, so paying is one transaction |
-| `Welcome` | Lists the demo assets; once per wallet gives a starter kit ($25 USDC, $15 NVIDIA, $10 Tesla, $10 Bitcoin at today's prices) and MON for gas; keeps the member list, each member's profile and money requests on-chain so the app can list them without scanning logs; `grant` lets the server fill simulated Buys |
+| `DemoAsset` | One test token per asset: USDC, USDT, PYUSD, DAI, EURC, NVDA, TSLA, AAPL, GOOGL, AMZN, META, MSFT, NFLX, COIN, CRCL, PAXG, XAUT, KAG, USDY, BUIDL, BTC, ETH, SOL. Deployed once and cloned (EIP-1167) for each asset so listing 23 is cheap. Mintable only by `Welcome`; `Osmo` can move it without an approval, so paying is one transaction. The price: Osmo is the one contract trusted to spend every holder's demo tokens, so a bug in Osmo would reach all of them |
+| `Welcome` | Lists the demo assets; once per wallet gives a starter kit ($25 USDC, $15 NVIDIA, $10 Tesla, $10 Bitcoin at today's prices) and MON for gas; keeps the member list, each member's profile and money requests on-chain so the app can list them without scanning logs; stops welcoming wallets at `maxMembers` (500, raised by the owner), so a flood of fresh addresses cannot drain the MON float; `grant` lets the server fill simulated Buys |
 
 Deploy next to the existing contracts with `script/DeployApp.s.sol`:
 `OSMO=0xC2f251c89Fac09830dadAb1Fc67Da885F01Bb45e RELAYER=<server wallet> forge script script/DeployApp.s.sol:DeployApp --rpc-url monad_testnet --account <deployer> --broadcast`.
@@ -292,6 +292,13 @@ npm run dev
 
 Prices come from CoinGecko through `/api/prices`, cached for a minute; dollar coins are pinned to $1. The phone
 wallet is kept in the browser's local storage: fine for a testnet demo, never for real money.
+
+## Services
+
+A keeper that runs due standing orders, a relayer that sponsors claim-link gas for clients that are not the phone
+app, and a notifier that pushes "you got paid" (never the note of a Private payment). They run beside the
+contracts, each with its own throwaway key in the macOS Keychain, and each is built so the most a stolen key can
+lose is gas. Threat model, controls and known ceilings are in [`services/README.md`](services/README.md).
 
 ## Licence
 

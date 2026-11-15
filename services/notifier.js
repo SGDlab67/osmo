@@ -21,6 +21,10 @@ import { ERC20, REGISTRY, why } from "./lib.js";
 export const topicFor = address =>
   "t-" + createHash("sha256").update("v1:" + address.toLowerCase()).digest("hex").slice(0, 32);
 
+/// The app marks a Private payment by putting this in front of the note. The chain is public either way, but
+/// the app promises the note is for the two people only, so it must never travel to a push service.
+export const PRIVATE_MARK = "\u{1F512}\u200B";
+
 /// Strip control characters and cap the length: a memo is untrusted text.
 const clean = (s, max) => String(s).replace(/[\u0000-\u001f\u007f]/g, " ").trim().slice(0, max);
 const short = a => `${a.slice(0, 6)}...${a.slice(-4)}`;
@@ -70,7 +74,8 @@ export function makeNotifier({ osmo, provider, registry, state, publish, cfg, ex
     const m = await tokenMeta(token);
     const who = (await nameOf(from)) || short(from);
     const amount = ethers.formatUnits(value, m.decimals);
-    const body = `${who} sent you ${amount} ${m.symbol}${memo ? ": " + clean(memo, 140) : ""}`;
+    const note = memo.startsWith(PRIVATE_MARK) ? "" : clean(memo, 140);
+    const body = `${who} sent you ${amount} ${m.symbol}${memo.startsWith(PRIVATE_MARK) ? " (private)" : note ? ": " + note : ""}`;
     for (let attempt = 1; ; attempt++) {
       try {
         await publish(topicFor(to), { title: "Payment received", body, click: `${explorer}/tx/${l.transactionHash}` });

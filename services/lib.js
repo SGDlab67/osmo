@@ -121,9 +121,9 @@ export const ledger = (file, capWei, clock = () => new Date()) => {
 // --- chain ---
 
 /// Fail closed: refuse to run against the wrong chain or a missing contract.
-export async function preflight(provider, address) {
+export async function preflight(provider, address, chainId = CFG.chainId) {
   const id = BigInt(await provider.send("eth_chainId", []));
-  if (id !== BigInt(CFG.chainId)) throw new Error(`rpc is on chain ${id}, expected ${CFG.chainId}`);
+  if (id !== BigInt(chainId)) throw new Error(`rpc is on chain ${id}, expected ${chainId}`);
   if ((await provider.getCode(address)) === "0x") throw new Error("no contract at the Osmo address");
 }
 

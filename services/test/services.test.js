@@ -4,7 +4,7 @@ import { test } from "node:test";
 import { CFG, limiter } from "../lib.js";
 import { tick } from "../keeper.js";
 import { makeRelayer, serve } from "../relayer.js";
-import { makeNotifier, topicFor } from "../notifier.js";
+import { PRIVATE_MARK, makeNotifier, topicFor } from "../notifier.js";
 import { WEEK, actor, world } from "./chain.js";
 
 const quiet = () => {};
@@ -177,6 +177,24 @@ test("notifier pushes once per payment, cleans the memo, and never replays histo
   await dead();
   await w.osmo.connect(w.alice).sendToken(w.share.target, "bobby", eth("1"), "x");
   await dead();
+});
+
+test("notifier never sends the note of a private payment to the push service", async t => {
+  const w = await world();
+  t.after(w.stop);
+  const pushes = [];
+  const poll = makeNotifier({
+    osmo: w.read, provider: w.provider, registry: w.registry.target,
+    state: { next: undefined, recent: [], save: quiet },
+    publish: async (topic, m) => pushes.push(m),
+    cfg: { ...CFG, confirmations: 0 }, explorer: "https://explorer.test", log: quiet,
+  });
+  await poll();
+  await (await w.osmo.connect(w.alice).sendToken(w.share.target, "bobby", eth("1"), PRIVATE_MARK + "secret rent")).wait();
+  await poll();
+  assert.equal(pushes.length, 1);
+  assert.equal(pushes[0].body, "alice sent you 1.0 mSHARE (private)");
+  assert.doesNotMatch(JSON.stringify(pushes), /secret/);
 });
 
 test("the limiter forgets old hits and counts keys separately", () => {
