@@ -28,6 +28,18 @@ export interface Person {
 }
 
 export const EVENT_TAG = "Monad Blitz Oregon";
+export const JUDGE_TAG = "Judge · Monad Blitz Oregon";
+
+/** Tonight's judges, so people can find and add them. Usernames are left free so they can claim them. */
+export const JUDGES: [string, string][] = [
+  ["alex_murray", "Alex Murray"],
+  ["peter_thorsson", "Peter Thorsson"],
+  ["robert_burkhart", "Robert Burkhart"],
+  ["dhru_patel", "Dhru Patel"],
+  ["dave_lange", "Dave Lange"],
+  ["mark_chiongson", "Mark Chiongson"],
+  ["joanna_gough", "Joanna Gough"],
+];
 
 /**
  * The sample people. They are created on Monad by `web/scripts/seed-demo.mjs`, with their own wallets and a few

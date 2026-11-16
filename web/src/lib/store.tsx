@@ -2,13 +2,13 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { PrivateKeyAccount } from "viem/accounts";
-import { registryAbi, osmoAbi, welcomeAbi } from "./abi";
+import { erc20Abi, registryAbi, osmoAbi, welcomeAbi } from "./abi";
 import { META, MON_GAS_RESERVE, balancesOf, toRaw, unitsFor, type Token } from "./assets";
 import { createWallet, forgetWallet, loadWallet, restoreWallet, saveName, savedKey, takeImportFromUrl } from "./burner";
 import { publicClient, sendAndConfirm, type Sent } from "./chain";
 import { config } from "./config";
 import { PRIVATE_MARK, type Payment } from "./feed";
-import { DEMO_PEOPLE, EVENT_PEOPLE, EVENT_TAG, defaultPicture, encodeProfile, type Person } from "./people";
+import { DEMO_PEOPLE, EVENT_PEOPLE, EVENT_TAG, JUDGES, JUDGE_TAG, defaultPicture, encodeProfile, type Person } from "./people";
 import { fromWire, type MoneyRequest, type WireState } from "./state";
 import type { Charity } from "./charities";
 
@@ -68,6 +68,7 @@ interface Store {
   request: (from: string[], usdEach: number, note: string) => Promise<void>;
   closeRequest: (id: number, status: "paid" | "declined" | "cancelled") => Promise<void>;
   buy: (symbol: string, usd: number) => Promise<{ units: number; hash: string; ms: number }>;
+  sell: (symbol: string, units: number, into?: string) => Promise<{ usd: number; hash: string; ms: number }>;
   saveProfile: (name: string, picture: string, country: string, privatePortfolio?: boolean) => Promise<void>;
   signOut: () => void;
   /** Log in on this phone with a username and a number from 1 to 9999. Throws a readable message on failure. */
@@ -225,8 +226,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const people = useMemo(() => {
     const joined = new Set(members.map((m) => m.handle));
     const eventList: Person[] = EVENT_PEOPLE.filter(([h]) => !joined.has(h)).map(([h, name]) => ({ address: ZERO, handle: h, name, picture: defaultPicture(h), country: "", joined: false, tag: EVENT_TAG }));
-    const tagged = members.map((m) => (EVENT_PEOPLE.some(([h]) => h === m.handle) ? { ...m, tag: EVENT_TAG } : m));
-    return [...tagged, ...eventList];
+    const judgeList: Person[] = JUDGES.filter(([h]) => !joined.has(h)).map(([h, name]) => ({ address: ZERO, handle: h, name, picture: defaultPicture(h), country: "", joined: false, tag: JUDGE_TAG }));
+    const tagged = members.map((m) => (JUDGES.some(([h]) => h === m.handle) ? { ...m, tag: JUDGE_TAG } : EVENT_PEOPLE.some(([h]) => h === m.handle) ? { ...m, tag: EVENT_TAG } : m));
+    return [...tagged, ...judgeList, ...eventList];
   }, [members]);
 
   const charityOf = useCallback((h: string) => charities.find((c) => c.handle === h), [charities]);
@@ -336,6 +338,29 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     [account, tokens],
   );
 
+  const sell = useCallback(
+    async (symbol: string, units: number, into = "USDC") => {
+      if (!account) throw new Error("Join first");
+      const t = tokens.find((x) => x.symbol === symbol);
+      if (!t) throw new Error("That asset can't be sold here.");
+      const started = performance.now();
+      // 1. Hand the asset back to the app (the Welcome contract). 2. The server checks it and pays out dollars.
+      const sent = await sendAndConfirm(account, { address: t.address, abi: erc20Abi, functionName: "transfer", args: [config.welcome, toRaw(units, t.decimals)] });
+      let body: { error?: string; usd?: number; hash?: string } = {};
+      for (let i = 0; i < 4; i++) {
+        const res = await fetch("/api/sell", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ hash: sent.hash, into }) });
+        body = await res.json().catch(() => ({}));
+        if (res.ok || res.status === 409 || res.status === 400) break;
+        await new Promise((r) => setTimeout(r, 1500));
+      }
+      if (!body.hash) throw new Error(body.error ?? "Sell failed");
+      setBalances(await balancesOf(account.address, tokens));
+      void sync.current(true);
+      return { usd: body.usd ?? 0, hash: body.hash, ms: Math.round(performance.now() - started) };
+    },
+    [account, tokens],
+  );
+
   const saveProfile = useCallback(
     async (name: string, picture: string, country: string, privatePortfolio?: boolean) => {
       if (!account) return;
@@ -413,7 +438,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   const value: Store = {
     ready, status, account, me, tokens, balances, prices, people, feed, requests, block, totalUsd, cashUsd,
-    charities, charityOf, personOf, canSee, spendable, join, pay, request, closeRequest, buy, saveProfile, signOut, signIn, setPassword, balancesFor,
+    charities, charityOf, personOf, canSee, spendable, join, pay, request, closeRequest, buy, sell, saveProfile, signOut, signIn, setPassword, balancesFor,
     friends, addFriend, removeFriend, reactions: local.reactions, react, hideBalances: local.hide, toggleHideBalances, arrivals, dismissArrival,
   };
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

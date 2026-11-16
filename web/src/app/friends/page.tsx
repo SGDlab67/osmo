@@ -4,7 +4,7 @@ import Link from "next/link";
 import { Search, UserPlus } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { useRequireAccount } from "@/lib/hooks";
-import { EVENT_TAG, type Person } from "@/lib/people";
+import { EVENT_TAG, JUDGE_TAG, type Person } from "@/lib/people";
 import { useStore } from "@/lib/store";
 import { Screen } from "@/components/shell";
 import { Avatar, Card, DemoNote, EmptyState, Flag, SectionTitle } from "@/components/ui";
@@ -35,6 +35,7 @@ export default function FriendsPage() {
   const q = query.trim().toLowerCase().replace(/^@/, "");
   const others = people.filter((p) => p.handle !== me.handle);
   const event = others.filter((p) => p.tag === EVENT_TAG).sort((a, b) => a.name.localeCompare(b.name));
+  const judges = others.filter((p) => p.tag === JUDGE_TAG);
   const suggested = others.filter((p) => p.joined && !p.tag && !friends.includes(p.handle));
   const results = q ? others.filter((p) => p.handle.includes(q) || p.name.toLowerCase().includes(q)) : [];
   const add = (h: string) =>
@@ -66,6 +67,16 @@ export default function FriendsPage() {
           </>
         ) : (
           <>
+            {judges.length > 0 && (
+              <>
+                <SectionTitle>Tonight&apos;s judges</SectionTitle>
+                <Card className="divide-y divide-line py-1">
+                  {judges.map((p) => (
+                    <PersonRow key={p.handle} p={p} right={add(p.handle)} />
+                  ))}
+                </Card>
+              </>
+            )}
             {suggested.length > 0 && (
               <>
                 <SectionTitle>Suggested</SectionTitle>
