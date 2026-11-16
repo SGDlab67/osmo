@@ -78,6 +78,11 @@ export function AssetScreen({ params }: { params: Promise<{ symbol: string }> })
             Send some
           </Link>
         </div>
+        {held > 0 && symbol !== "MON" && META[symbol]?.market !== "cash" && (
+          <Link href={`/sell?asset=${symbol}`} className="mt-2.5 flex h-14 items-center justify-center rounded-full border border-line bg-white text-[17px] font-semibold">
+            Sell for dollars
+          </Link>
+        )}
         <p className="px-1 pt-5 text-[13px] font-semibold uppercase tracking-wide text-muted">About</p>
         <p className="px-1 pt-1 text-[15px] leading-relaxed">{m.about}</p>
         {symbol !== "MON" && <p className="px-1 pb-8 pt-3 text-[12px] text-muted">On this testnet it is a test token priced at the real market price. It has no cash value.</p>}

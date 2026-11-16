@@ -5,7 +5,7 @@ import { useState, useSyncExternalStore } from "react";
 import { ChevronRight, Plus, UsersRound } from "lucide-react";
 import { usd } from "@/lib/assets";
 import { useRequireAccount } from "@/lib/hooks";
-import { EVENT_TAG } from "@/lib/people";
+import { EVENT_TAG, JUDGE_TAG } from "@/lib/people";
 import { useStore } from "@/lib/store";
 import { FeedCard } from "@/components/feed-card";
 import { Screen, SearchBar } from "@/components/shell";
@@ -28,7 +28,9 @@ export default function HomePage() {
 
   const waiting = requests.filter((r) => r.payer === me.handle && r.status === "open").length;
   // Event builders you haven't added yet first, so the row always has someone to add.
-  const event = people.filter((p) => p.tag === EVENT_TAG && p.handle !== me.handle).sort((a, b) => Number(friends.includes(a.handle)) - Number(friends.includes(b.handle)) || Number(b.joined) - Number(a.joined));
+  const event = people
+    .filter((p) => (p.tag === EVENT_TAG || p.tag === JUDGE_TAG) && p.handle !== me.handle)
+    .sort((a, b) => Number(friends.includes(a.handle)) - Number(friends.includes(b.handle)) || Number(b.tag === JUDGE_TAG) - Number(a.tag === JUDGE_TAG) || Number(b.joined) - Number(a.joined));
   const top = [...friends, ...people.filter((p) => p.joined && p.handle !== me.handle).map((p) => p.handle)].filter((h, i, a) => a.indexOf(h) === i).slice(0, 6);
   const visible = feed.filter(canSee);
   const shown = scope === "everyone" ? visible.filter((p) => !p.isPrivate) : visible.filter((p) => [p.from, p.to].some((h) => h === me.handle || friends.includes(h)));
